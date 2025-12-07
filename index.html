@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <title>天九至尊 - 4人联机游戏</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 登录界面 -->
+        <div id="loginScreen" class="screen">
+            <div class="login-container">
+                <h1 class="game-title">天九<br>至尊</h1>
+                <p class="game-subtitle">广西天九 · 移动版</p>
+                <div class="login-form">
+                    <input type="text" id="playerName" placeholder="输入昵称" maxlength="10" autocomplete="off">
+                    <input type="text" id="roomId" placeholder="房间号（选填）" maxlength="20" autocomplete="off">
+                    <button id="joinBtn" class="btn-primary">加入房间</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 座位选择界面 -->
+        <div id="seatSelectionScreen" class="screen hidden">
+            <div class="seat-selection-container">
+                <h2>选择你的座位</h2>
+                <p class="room-info">房间 <span id="seatRoomId"></span></p>
+                <div class="seats-grid">
+                    <div class="seat-slot" data-position="0">
+                        <div class="seat-avatar">1</div>
+                        <span class="seat-name" id="seat0Name">空位</span>
+                        <button class="btn-select-seat" data-position="0">选择</button>
+                    </div>
+                    <div class="seat-slot" data-position="1">
+                        <div class="seat-avatar">2</div>
+                        <span class="seat-name" id="seat1Name">空位</span>
+                        <button class="btn-select-seat" data-position="1">选择</button>
+                    </div>
+                    <div class="seat-slot" data-position="2">
+                        <div class="seat-avatar">3</div>
+                        <span class="seat-name" id="seat2Name">空位</span>
+                        <button class="btn-select-seat" data-position="2">选择</button>
+                    </div>
+                    <div class="seat-slot" data-position="3">
+                        <div class="seat-avatar">4</div>
+                        <span class="seat-name" id="seat3Name">空位</span>
+                        <button class="btn-select-seat" data-position="3">选择</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 等待界面 -->
+        <div id="waitingScreen" class="screen hidden">
+            <div class="waiting-container">
+                <h2>房间 <span id="displayRoomId"></span></h2>
+                <p class="waiting-tip">等待玩家加入中...</p>
+                <div class="players-grid">
+                    <div class="player-slot" data-position="0">
+                        <div class="player-avatar">1</div>
+                        <span class="player-name" id="player0Name">等待中</span>
+                    </div>
+                    <div class="player-slot" data-position="1">
+                        <div class="player-avatar">2</div>
+                        <span class="player-name" id="player1Name">等待中</span>
+                    </div>
+                    <div class="player-slot" data-position="2">
+                        <div class="player-avatar">3</div>
+                        <span class="player-name" id="player2Name">等待中</span>
+                    </div>
+                    <div class="player-slot" data-position="3">
+                        <div class="player-avatar">4</div>
+                        <span class="player-name" id="player3Name">等待中</span>
+                    </div>
+                </div>
+                <button id="readyBtn" class="btn-primary btn-large" disabled>准备开始</button>
+            </div>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="gameScreen" class="screen hidden">
+            <div class="game-container">
+                <!-- 中央出牌区 -->
+                <div class="play-area">
+                    <!-- 骰子区域 -->
+                    <div class="dice-container hidden" id="diceContainer">
+                        <div class="dice-wrapper">
+                            <div class="dice-box" id="dice1">
+                                <img src="imgs/1.svg" class="dice-img" alt="骰子1">
+                            </div>
+                            <div class="dice-box" id="dice2">
+                                <img src="imgs/1.svg" class="dice-img" alt="骰子2">
+                            </div>
+                        </div>
+                        <button id="rollDiceBtn" class="btn-primary btn-roll-dice" disabled>摇骰子</button>
+                        <p class="dice-info" id="diceInfo"></p>
+                    </div>
+                    
+                    <!-- 2x2出牌网格 (座位1-左上, 座位2-右上, 座位3-左下, 座位4-右下) -->
+                    <div class="played-cards-container" id="playedCards">
+                        <!-- 左上：座位1 (position 0) -->
+                        <div class="player-play-zone zone-pos0" data-position="0">
+                            <div class="player-zone-header">
+                                <div class="opponent-avatar">1</div>
+                                <div class="opponent-details">
+                                    <div class="name-row">
+                                        <span class="opponent-name" id="pos0PlayerName">座位1</span>
+                                        <div class="dealer-badge hidden" id="pos0DealerBadge">庄</div>
+                                    </div>
+                                    <div class="opponent-stats">
+                                        <span class="cards-count" id="pos0CardsCount">8张</span>
+                                        <span class="dong-count" id="pos0DongCount">0栋</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="play-cards-area" id="pos0PlayedCards"></div>
+                        </div>
+
+                        <!-- 右上：座位2 (position 1) -->
+                        <div class="player-play-zone zone-pos1" data-position="1">
+                            <div class="player-zone-header">
+                                <div class="opponent-avatar">2</div>
+                                <div class="opponent-details">
+                                    <div class="name-row">
+                                        <span class="opponent-name" id="pos1PlayerName">座位2</span>
+                                        <div class="dealer-badge hidden" id="pos1DealerBadge">庄</div>
+                                    </div>
+                                    <div class="opponent-stats">
+                                        <span class="cards-count" id="pos1CardsCount">8张</span>
+                                        <span class="dong-count" id="pos1DongCount">0栋</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="play-cards-area" id="pos1PlayedCards"></div>
+                        </div>
+
+                        <!-- 左下：座位3 (position 2) -->
+                        <div class="player-play-zone zone-pos2" data-position="2">
+                            <div class="player-zone-header">
+                                <div class="opponent-avatar">3</div>
+                                <div class="opponent-details">
+                                    <div class="name-row">
+                                        <span class="opponent-name" id="pos2PlayerName">座位3</span>
+                                        <div class="dealer-badge hidden" id="pos2DealerBadge">庄</div>
+                                    </div>
+                                    <div class="opponent-stats">
+                                        <span class="cards-count" id="pos2CardsCount">8张</span>
+                                        <span class="dong-count" id="pos2DongCount">0栋</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="play-cards-area" id="pos2PlayedCards"></div>
+                        </div>
+
+                        <!-- 右下：座位4 (position 3) -->
+                        <div class="player-play-zone zone-pos3" data-position="3">
+                            <div class="player-zone-header">
+                                <div class="opponent-avatar">4</div>
+                                <div class="opponent-details">
+                                    <div class="name-row">
+                                        <span class="opponent-name" id="pos3PlayerName">座位4</span>
+                                        <div class="dealer-badge hidden" id="pos3DealerBadge">庄</div>
+                                    </div>
+                                    <div class="opponent-stats">
+                                        <span class="cards-count" id="pos3CardsCount">8张</span>
+                                        <span class="dong-count" id="pos3DongCount">0栋</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="play-cards-area" id="pos3PlayedCards"></div>
+                        </div>
+                    </div>
+
+                    <!-- 当前栋信息和菜单按钮 -->
+                    <div class="game-info-overlay">
+                        <span class="current-dong">
+                            第 <strong id="currentRound">0</strong> 栋
+                        </span>
+                        <span class="turn-indicator" id="turnText">等待中...</span>
+                        <button id="menuBtn" class="icon-btn">☰</button>
+                    </div>
+                </div>
+
+                <!-- 底部玩家手牌区 -->
+                <div class="player-hand-section">
+                    <!-- 控制按钮 -->
+                    <div class="controls-bar">
+                        <button id="sortBtn" class="btn-control">整理</button>
+                        <button id="passBtn" class="btn-control btn-pass" disabled>过牌</button>
+                        <button id="playBtn" class="btn-control btn-play" disabled>出牌</button>
+                    </div>
+                    
+                    <!-- 手牌区域 -->
+                    <div class="player-cards-container">
+                        <div class="player-cards" id="playerCards">
+                            <!-- 玩家手牌 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏结束界面 -->
+        <div id="gameOverScreen" class="screen hidden">
+            <div class="gameover-container">
+                <div class="trophy-icon">🏆</div>
+                <h1 class="gameover-title">游戏结束</h1>
+                <h2 class="winner-name" id="winnerName">获胜者</h2>
+                <p class="winner-subtitle">赢得最后一栋</p>
+                <div class="gameover-buttons">
+                    <button id="playAgainBtn" class="btn-primary btn-large">再来一局</button>
+                    <button id="backToLobbyBtn" class="btn-secondary btn-large">返回大厅</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示消息 Toast -->
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="client.js"></script>
+</body>
+</html>

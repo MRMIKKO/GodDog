@@ -1,0 +1,21 @@
+{
+  "name": "tianjiuzhizun",
+  "version": "1.0.0",
+  "description": "天九至尊 - 4人联机天九牌游戏",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "天九",
+    "牌类游戏",
+    "多人游戏"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2",
+    "express": "^4.18.2"
+  }
+}

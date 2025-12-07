@@ -1,0 +1,875 @@
+/* ==================== 全局样式 ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+    --primary-color: #c41e3a;
+    --secondary-color: #8b0000;
+    --gold-color: #ffd700;
+    --bg-dark: #1a1a2e;
+    --card-bg: #16213e;
+    --text-light: #f5f5f5;
+    --text-dark: #333;
+    --success-color: #4caf50;
+    --table-green: #0a5f38;
+    --border-radius: 12px;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-light);
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 屏幕容器 */
+.screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.3s ease;
+    overflow: hidden;
+}
+
+.screen.hidden {
+    display: none;
+    opacity: 0;
+}
+
+/* ==================== 登录界面 ==================== */
+.login-container {
+    width: 90%;
+    max-width: 400px;
+    padding: 40px 30px;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(22, 33, 62, 0.95), rgba(26, 26, 46, 0.95));
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 2px solid var(--gold-color);
+}
+
+.game-title {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: var(--gold-color);
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    margin-bottom: 10px;
+    line-height: 1.2;
+    letter-spacing: 8px;
+}
+
+.game-subtitle {
+    font-size: 1rem;
+    color: #aaa;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.login-form input {
+    padding: 18px 20px;
+    font-size: 1.1rem;
+    border: 2px solid rgba(196, 30, 58, 0.5);
+    border-radius: var(--border-radius);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-light);
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.login-form input:focus {
+    outline: none;
+    border-color: var(--gold-color);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.login-form input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ==================== 按钮样式 ==================== */
+.btn-primary, .btn-secondary, .btn-control {
+    padding: 16px 24px;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: bold;
+    touch-action: manipulation;
+    user-select: none;
+}
+
+.btn-large {
+    padding: 20px 40px;
+    font-size: 1.2rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: var(--text-light);
+    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
+}
+
+.btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(196, 30, 58, 0.6);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
+    border: 2px solid var(--gold-color);
+}
+
+.btn-secondary:active:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.98);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--gold-color);
+    font-size: 1.8rem;
+    padding: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+/* ==================== 等待界面 ==================== */
+.waiting-container {
+    width: 90%;
+    max-width: 400px;
+    padding: 30px 25px;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(22, 33, 62, 0.95), rgba(26, 26, 46, 0.95));
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 2px solid var(--gold-color);
+}
+
+.waiting-container h2 {
+    color: var(--gold-color);
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+}
+
+.waiting-tip {
+    color: #999;
+    margin-bottom: 25px;
+    font-size: 0.95rem;
+}
+
+.players-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.player-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius);
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.player-slot.active {
+    border-color: var(--gold-color);
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.player-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-light);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.player-name {
+    font-size: 0.95rem;
+    color: var(--text-light);
+    text-align: center;
+}
+
+/* ==================== 座位选择界面 ==================== */
+.seat-selection-container {
+    width: 90%;
+    max-width: 400px;
+    padding: 30px 25px;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(22, 33, 62, 0.95), rgba(26, 26, 46, 0.95));
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 2px solid var(--gold-color);
+}
+
+.seat-selection-container h2 {
+    color: var(--gold-color);
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+}
+
+.room-info {
+    color: #999;
+    margin-bottom: 25px;
+    font-size: 0.95rem;
+}
+
+.seats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.seat-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius);
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.seat-slot.occupied {
+    border-color: rgba(139, 0, 0, 0.5);
+    opacity: 0.6;
+}
+
+.seat-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-light);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.seat-name {
+    font-size: 0.95rem;
+    color: var(--text-light);
+    text-align: center;
+    min-height: 20px;
+}
+
+.btn-select-seat {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: var(--text-light);
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(196, 30, 58, 0.4);
+    touch-action: manipulation;
+    transition: all 0.2s ease;
+}
+
+.btn-select-seat:active {
+    transform: scale(0.95);
+}
+
+.btn-select-seat:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ==================== 游戏界面 ==================== */
+.game-container {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* 动态视口高度，避免地址栏影响 */
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--table-green) 0%, #053d24 100%);
+    overflow: hidden;
+}
+
+/* 中央出牌区 */
+.play-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 游戏信息悬浮层 */
+.game-info-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 12px;
+    border-radius: 10px;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+}
+
+.current-dong {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.current-dong strong {
+    color: var(--gold-color);
+    font-size: 1.1rem;
+}
+
+.turn-indicator {
+    font-size: 0.85rem;
+    color: #999;
+    flex: 1;
+    text-align: center;
+}
+
+/* 2x2 出牌网格 */
+.played-cards-container {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 8px;
+    margin-top: 82px; /* 为顶部信息栏留出空间 */
+}
+
+.player-play-zone {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    min-height: 0; /* 确保grid子元素可以正确收缩 */
+}
+
+.player-play-zone.active {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: var(--gold-color);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* 玩家区域头部 */
+.player-zone-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-shrink: 0;
+    height: 40px; /* 固定头部高度 */
+}
+
+.name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.opponent-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--text-light);
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-self {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+}
+
+.opponent-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.opponent-name {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opponent-stats {
+    display: flex;
+    gap: 6px;
+    font-size: 0.7rem;
+}
+
+.cards-count {
+    color: #999;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 5px;
+    border-radius: 4px;
+}
+
+.dong-count {
+    color: var(--gold-color);
+    background: rgba(255, 215, 0, 0.15);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.dealer-badge {
+    background: linear-gradient(135deg, var(--gold-color), #ffed4e);
+    color: var(--secondary-color);
+    font-size: 0.65rem;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.5);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.dealer-badge.hidden {
+    display: none;
+}
+
+/* 出牌区域 */
+.play-cards-area {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 3px;
+    overflow-y: auto;
+    padding: 4px;
+    min-height: 0; /* 确保可以正确滚动 */
+}
+
+/* 骰子区域 */
+.dice-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    background: rgba(0, 0, 0, 0.95);
+    padding: 40px;
+    border-radius: 16px;
+    border: 2px solid var(--gold-color);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+}
+
+.dice-container.hidden {
+    display: none;
+}
+
+.dice-wrapper {
+    display: flex;
+    gap: 40px;
+    min-height: 100px;
+    align-items: center;
+    padding: 20px;
+}
+
+.dice-box {
+    width: 90px;
+    height: 90px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dice-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6));
+}
+
+.btn-roll-dice {
+    padding: 14px 32px;
+    font-size: 1.1rem;
+    min-width: 140px;
+}
+
+.dice-info {
+    color: var(--gold-color);
+    font-size: 1rem;
+    text-align: center;
+    margin: 0;
+    min-height: 24px;
+    white-space: pre-line;
+    line-height: 1.5;
+}
+
+.played-cards-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 420px;
+}
+
+.played-card-slot {
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 10px;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.played-card-slot .player-label {
+    font-size: 0.8rem;
+    color: #aaa;
+    text-align: center;
+    font-weight: 600;
+}
+
+.played-card-slot .cards-wrapper {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* 底部手牌区 */
+.player-hand-section {
+    background: rgba(0, 0, 0, 0.5);
+    border-top: 2px solid rgba(255, 215, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.controls-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 15px 8px 15px;
+    gap: 10px;
+}
+
+.btn-control {
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-play {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    border-color: #4caf50;
+}
+
+.btn-play:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.btn-pass {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    border-color: #ff9800;
+}
+
+.btn-pass:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+}
+
+.player-cards-container {
+    padding: 8px 10px 12px 10px;
+    overflow: visible;
+}
+
+.player-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px 6px;
+    justify-items: center;
+    align-items: end; /* 对齐底部，为选中向上浮动留出空间 */
+    padding-top: 20px; /* 为选中状态向上浮动预留空间 */
+}
+
+/* 牌的样式 */
+.card {
+    width: 70px;
+    height: 100px;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    position: relative;
+    touch-action: manipulation;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    will-change: transform;
+}
+
+.card img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    pointer-events: none; /* 防止图片拦截点击事件 */
+}
+
+.card.selected {
+    transform: translateY(-15px) !important;
+    box-shadow: 0 6px 16px rgba(255, 215, 0, 0.8) !important;
+    border: 3px solid var(--gold-color) !important;
+    background: rgba(255, 215, 0, 0.15) !important;
+}
+
+.card:active:not(.selected) {
+    transform: scale(0.98);
+}
+
+.card.small {
+    width: 45px;
+    height: 65px;
+    border-radius: 5px;
+    box-shadow: none; /* 去掉出牌区域预览牌的阴影 */
+}
+
+/* 丢弃的牌 */
+.card.discarded-card {
+    width: 45px;
+    height: 65px;
+    border-radius: 5px;
+    opacity: 0.7;
+    cursor: default;
+    box-shadow: none;
+}
+
+.card.discarded-card:hover {
+    transform: none;
+}
+
+/* 牌背 */
+.card-back {
+    width: 32px;
+    height: 46px;
+    background: linear-gradient(135deg, #1a237e, #0d47a1);
+    border-radius: 4px;
+    border: 1.5px solid var(--gold-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    color: var(--gold-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+/* ==================== 游戏结束界面 ==================== */
+.gameover-container {
+    width: 90%;
+    max-width: 400px;
+    padding: 40px 30px;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(22, 33, 62, 0.95), rgba(26, 26, 46, 0.95));
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 2px solid var(--gold-color);
+}
+
+.trophy-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.gameover-title {
+    font-size: 2rem;
+    color: var(--gold-color);
+    margin-bottom: 15px;
+}
+
+.winner-name {
+    font-size: 1.8rem;
+    color: var(--text-light);
+    margin-bottom: 10px;
+}
+
+.winner-subtitle {
+    font-size: 1rem;
+    color: #999;
+    margin-bottom: 35px;
+}
+
+.gameover-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* ==================== Toast 提示 ==================== */
+.toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: var(--text-light);
+    padding: 16px 24px;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    z-index: 10000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    max-width: 80%;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.toast:not(.hidden) {
+    opacity: 1;
+}
+
+/* ==================== 响应式调整 ==================== */
+@media (max-width: 375px) {
+    .game-title {
+        font-size: 3rem;
+    }
+    
+    .card {
+        width: 58px;
+        height: 83px;
+    }
+    
+    .card.small {
+        width: 38px;
+        height: 55px;
+    }
+    
+    .player-cards {
+        gap: 6px 4px;
+    }
+}
+
+@media (min-width: 376px) and (max-width: 414px) {
+    .card {
+        width: 68px;
+        height: 97px;
+    }
+}
+
+@media (min-height: 700px) {
+    .card {
+        width: 75px;
+        height: 107px;
+    }
+}
+
+/* ==================== 横屏提示 ==================== */
+@media (orientation: landscape) and (max-height: 500px) {
+    .game-container::before {
+        content: '请将设备竖屏使用以获得最佳体验';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(196, 30, 58, 0.95);
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-size: 0.9rem;
+        z-index: 9999;
+    }
+}
+
+/* ==================== 优化触摸体验 ==================== */
+button, .card, input {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+* {
+    -webkit-touch-callout: none;
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="66px" height="66px" viewBox="0 0 66 66" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>5</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="骰子" transform="translate(-91.000000, -92.000000)">
+            <g id="5" transform="translate(91.000000, 92.000000)">
+                <rect id="Rectangle" stroke="#000000" fill="#FFFFFF" x="0.5" y="0.5" width="65" height="65" rx="15"></rect>
+                <circle id="Oval" fill="#000000" transform="translate(50.500000, 49.500000) scale(-1, 1) translate(-50.500000, -49.500000) " cx="50.5" cy="49.5" r="8.5"></circle>
+                <circle id="Oval" fill="#000000" transform="translate(16.500000, 15.500000) scale(-1, 1) translate(-16.500000, -15.500000) " cx="16.5" cy="15.5" r="8.5"></circle>
+                <circle id="Oval" fill="#000000" transform="translate(33.500000, 32.500000) scale(-1, 1) translate(-33.500000, -32.500000) " cx="33.5" cy="32.5" r="8.5"></circle>
+                <circle id="Oval" fill="#000000" transform="translate(50.500000, 15.500000) scale(-1, 1) translate(-50.500000, -15.500000) " cx="50.5" cy="15.5" r="8.5"></circle>
+                <circle id="Oval" fill="#000000" transform="translate(16.500000, 49.500000) scale(-1, 1) translate(-16.500000, -49.500000) " cx="16.5" cy="49.5" r="8.5"></circle>
+            </g>
+        </g>
+    </g>
+</svg>

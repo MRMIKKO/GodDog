@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="150px" height="355px" viewBox="0 0 150 355" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>人</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="天九" transform="translate(-440.000000, -0.000000)">
+            <g id="人" transform="translate(440.000000, 0.000000)">
+                <rect id="Rectangle" fill="#000000" x="0" y="0" width="150" height="355" rx="20"></rect>
+                <g id="Group-4" transform="translate(20.000000, 15.000000)" fill="#EA0707" stroke="#000000">
+                    <circle id="Oval" cx="85" cy="25" r="25"></circle>
+                    <circle id="Oval" cx="25" cy="25" r="25"></circle>
+                </g>
+                <g id="Group-3" transform="translate(20.000000, 107.000000)" fill="#EA0707" stroke="#000000">
+                    <circle id="Oval" cx="85" cy="25" r="25"></circle>
+                    <circle id="Oval" cx="25" cy="25" r="25"></circle>
+                </g>
+                <g id="Group-2" transform="translate(20.000000, 199.000000)" fill="#EA0707" stroke="#000000">
+                    <circle id="Oval" cx="85" cy="25" r="25"></circle>
+                    <circle id="Oval" cx="25" cy="25" r="25"></circle>
+                </g>
+                <g id="Group" transform="translate(20.000000, 290.000000)" fill="#EA0707" stroke="#000000">
+                    <circle id="Oval" cx="85" cy="25" r="25"></circle>
+                    <circle id="Oval" cx="25" cy="25" r="25"></circle>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
