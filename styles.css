@@ -389,6 +389,7 @@ button:disabled {
 }
 
 .player-play-zone {
+    position: relative; /* 添加relative定位以支持OUT标记 */
     background: rgba(0, 0, 0, 0.3);
     border-radius: 12px;
     border: 2px solid rgba(255, 255, 255, 0.1);
@@ -609,6 +610,7 @@ button:disabled {
 
 /* 底部手牌区 */
 .player-hand-section {
+    position: relative; /* 添加relative定位以支持OUT标记 */
     background: rgba(0, 0, 0, 0.5);
     border-top: 2px solid rgba(255, 215, 0, 0.3);
     display: flex;
@@ -654,6 +656,8 @@ button:disabled {
 .player-cards-container {
     padding: 8px 10px 12px 10px;
     overflow: visible;
+    min-height: 280px; /* 固定最小高度：20px(padding-top) + 100px(card) + 20px(padding-top) + gap空间 */
+    height: 280px; /* 固定高度避免跳动 */
 }
 
 .player-cards {
@@ -847,6 +851,60 @@ button:disabled {
     }
 }
 
+/* ==================== OUT标记样式 ==================== */
+.out-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: linear-gradient(135deg, #c41e3a, #8b0000);
+    color: white;
+    font-size: 2rem;
+    font-weight: 900;
+    padding: 15px 30px;
+    border-radius: 10px;
+    border: 4px solid #ffd700;
+    box-shadow: 0 8px 24px rgba(196, 30, 58, 0.8),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    z-index: 100;
+    letter-spacing: 8px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: pulse 1.5s infinite;
+}
+
+.out-badge.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+/* 玩家手牌区域的OUT标记调整 */
+.player-hand-section .out-badge {
+    top: 40%;
+    font-size: 1.8rem;
+    padding: 12px 25px;
+}
+
+/* 对手区域的OUT标记调整 */
+.player-play-zone .out-badge {
+    font-size: 1.5rem;
+    padding: 10px 20px;
+    letter-spacing: 6px;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 8px 24px rgba(196, 30, 58, 0.8),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 8px 32px rgba(196, 30, 58, 1),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.5),
+                    0 0 20px rgba(255, 215, 0, 0.6);
+    }
+}
+
 /* ==================== 横屏提示 ==================== */
 @media (orientation: landscape) and (max-height: 500px) {
     .game-container::before {
@@ -873,3 +931,4 @@ button, .card, input {
 * {
     -webkit-touch-callout: none;
 }
+

@@ -14,6 +14,7 @@ class TianJiuGame {
         this.currentDong = []; // 追踪当前栋的出牌情况
         this.dealerPosition = -1; // 庄家位置
         this.firstHandDealer = -1; // 第一局的庄家（头出二庄的"二庄"）
+        this.outPlayers = [false, false, false, false]; // 标记哪些玩家被OUT
         
         this.initializeUI();
         this.setupEventListeners();
@@ -199,6 +200,9 @@ class TianJiuGame {
             case 'gameOver':
                 this.handleGameOver(data);
                 break;
+            case 'playerOut':
+                this.handlePlayerOut(data);
+                break;
             case 'error':
                 // 如果有待确认的出牌，保持手牌和选中状态，提示错误并允许重新操作
                 this.showToast(data.message, 3000);
@@ -333,6 +337,11 @@ class TianJiuGame {
 
     handleGameStart(data) {
         this.showScreen('game');
+        
+        // 重置OUT状态
+        this.outPlayers = [false, false, false, false];
+        // 移除所有OUT标记
+        document.querySelectorAll('.out-badge').forEach(badge => badge.remove());
         
         // 确保有玩家数据（从gameState或之前保存的players）
         if (data.gameState && data.gameState.players) {
@@ -583,8 +592,18 @@ class TianJiuGame {
 
     updateControlButtons() {
         const isMyTurn = this.isMyTurn();
+        // 检查当前玩家是否被OUT
+        const isOut = this.outPlayers[this.position];
+        
         // 在等待服务器确认时禁用操作按钮
         if (this.awaitingPlayConfirmation) {
+            this.elements.playBtn.disabled = true;
+            this.elements.passBtn.disabled = true;
+            return;
+        }
+
+        // 如果被OUT，禁用所有操作
+        if (isOut) {
             this.elements.playBtn.disabled = true;
             this.elements.passBtn.disabled = true;
             return;
@@ -623,40 +642,162 @@ class TianJiuGame {
         if (cards.length === 1) {
             return { valid: true };
         } else if (cards.length === 2) {
-            // 检查特殊组合（母至尊）
+            // 检查特殊组合（至尊）
             const special = this.checkSpecialCombination(cards);
             if (special.isSpecial) {
                 return { valid: true };
             }
 
-            // 检查文牌对子
-            if (cards[0].type === 'wen' && cards[1].type === 'wen' && cards[0].rank === cards[1].rank) {
+            const pairType = this.getPairType(cards);
+            if (pairType) {
                 return { valid: true };
             }
 
-            // 检查武牌对子
-            if (cards[0].type === 'wu' && cards[1].type === 'wu') {
-                const ranks = [cards[0].rank, cards[1].rank].sort((a, b) => b - a);
-                const validWuPairs = [
-                    [9, 6], // 至尊
-                    [9, 5], // 饿五
-                    [9, 8], // 杂九
-                    [8, 7], // 杂八
-                    [7, 6], // 杂七
-                    [5, 3]  // 杂五
-                ];
-
-                for (const validPair of validWuPairs) {
-                    if (ranks[0] === validPair[0] && ranks[1] === validPair[1]) {
-                        return { valid: true };
-                    }
-                }
+            return { valid: false, error: '两张牌必须是文对、武对、文武对或特殊组合' };
+        } else if (cards.length === 3) {
+            // 检查3张牌的文武组合
+            const tripleType = this.getTripleWenWuType(cards);
+            if (tripleType) {
+                return { valid: true };
             }
-
-            return { valid: false, error: '两张牌必须是文牌对子、武牌对子或特殊组合' };
+            return { valid: false, error: '三张牌必须是有效的文武组合（如：三人七）' };
+        } else if (cards.length === 4) {
+            // 检查4张牌的文武组合
+            const quadType = this.getQuadWenWuType(cards);
+            if (quadType) {
+                return { valid: true };
+            }
+            return { valid: false, error: '四张牌必须是有效的文武组合（如：四人七）' };
         } else {
-            return { valid: false, error: '一次只能出1张或2张牌（对子或特殊组合）' };
+            return { valid: false, error: '一次只能出1张、2张、3张或4张牌' };
         }
+    }
+
+    // 判断两张牌的对子类型
+    getPairType(cards) {
+        if (cards.length !== 2) return null;
+
+        const card1 = cards[0];
+        const card2 = cards[1];
+
+        // 文对：两张相同名称的文牌
+        if (card1.type === 'wen' && card2.type === 'wen' && card1.name === card2.name) {
+            return 'wen';
+        }
+
+        // 武对：两张相同点数的武牌
+        if (card1.type === 'wu' && card2.type === 'wu') {
+            const points1 = card1.points;
+            const points2 = card2.points;
+            
+            if (points1 === points2) {
+                return 'wu';
+            }
+        }
+
+        // 文武对：文牌+武牌的特定组合
+        if ((card1.type === 'wen' && card2.type === 'wu') || (card1.type === 'wu' && card2.type === 'wen')) {
+            const wenCard = card1.type === 'wen' ? card1 : card2;
+            const wuCard = card1.type === 'wu' ? card1 : card2;
+            
+            // 天九：天 + 九点
+            if (wenCard.name === '天' && wuCard.points === 9) {
+                return 'wenwu';
+            }
+            // 地八：地 + 八点
+            if (wenCard.name === '地' && wuCard.points === 8) {
+                return 'wenwu';
+            }
+            // 人七：人 + 七点
+            if (wenCard.name === '人' && wuCard.points === 7) {
+                return 'wenwu';
+            }
+            // 和五：和 + 五点
+            if (wenCard.name === '和' && wuCard.points === 5) {
+                return 'wenwu';
+            }
+        }
+
+        return null;
+    }
+
+    // 检查3张牌的文武组合
+    getTripleWenWuType(cards) {
+        if (cards.length !== 3) return null;
+
+        const wenCards = cards.filter(c => c.type === 'wen');
+        const wuCards = cards.filter(c => c.type === 'wu');
+
+        if ((wenCards.length === 2 && wuCards.length === 1) || 
+            (wenCards.length === 1 && wuCards.length === 2)) {
+            
+            // 天九
+            if (this.checkTripleWenWu(wenCards, wuCards, '天', 9)) {
+                return { type: 'tianJiu', name: '三天九' };
+            }
+            // 地八
+            if (this.checkTripleWenWu(wenCards, wuCards, '地', 8)) {
+                return { type: 'diBa', name: '三地八' };
+            }
+            // 人七
+            if (this.checkTripleWenWu(wenCards, wuCards, '人', 7)) {
+                return { type: 'renQi', name: '三人七' };
+            }
+            // 和五
+            if (this.checkTripleWenWu(wenCards, wuCards, '和', 5)) {
+                return { type: 'heWu', name: '三和五' };
+            }
+        }
+
+        return null;
+    }
+
+    // 检查4张牌的文武组合（2文+2武）
+    getQuadWenWuType(cards) {
+        if (cards.length !== 4) return null;
+
+        const wenCards = cards.filter(c => c.type === 'wen');
+        const wuCards = cards.filter(c => c.type === 'wu');
+
+        // 必须是2文+2武
+        if (wenCards.length === 2 && wuCards.length === 2) {
+            // 天九：2天+2九点
+            if (this.checkQuadWenWu(wenCards, wuCards, '天', 9)) {
+                return { type: 'tianJiu', name: '四天九' };
+            }
+            // 地八：2地+2八点
+            if (this.checkQuadWenWu(wenCards, wuCards, '地', 8)) {
+                return { type: 'diBa', name: '四地八' };
+            }
+            // 人七：2人+2七点
+            if (this.checkQuadWenWu(wenCards, wuCards, '人', 7)) {
+                return { type: 'renQi', name: '四人七' };
+            }
+            // 和五：2和+2五点
+            if (this.checkQuadWenWu(wenCards, wuCards, '和', 5)) {
+                return { type: 'heWu', name: '四和五' };
+            }
+        }
+
+        return null;
+    }
+
+    checkQuadWenWu(wenCards, wuCards, wenName, wuPoints) {
+        // 2文牌必须都是指定名称，2武牌必须都是指定点数
+        return wenCards.every(c => c.name === wenName) && 
+               wuCards.every(c => c.points === wuPoints);
+    }
+
+    checkTripleWenWu(wenCards, wuCards, wenName, wuPoints) {
+        if (wenCards.length === 2 && wuCards.length === 1) {
+            return wenCards.every(c => c.name === wenName) && 
+                   wuCards[0].points === wuPoints;
+        }
+        if (wenCards.length === 1 && wuCards.length === 2) {
+            return wenCards[0].name === wenName && 
+                   wuCards.every(c => c.points === wuPoints);
+        }
+        return false;
     }
 
     checkSpecialCombination(cards) {
@@ -664,155 +805,260 @@ class TianJiuGame {
             return { isSpecial: false };
         }
 
-        const names = cards.map(c => c.name).sort();
-        
-        // 母至尊：三点 + 六点
-        if ((names.includes('三点') && names.includes('六点')) ||
-            (cards[0].name === '三点' && cards[1].name === '六点') ||
-            (cards[0].name === '六点' && cards[1].name === '三点')) {
-            return { isSpecial: true, type: 'muZhiZun' };
+        const card1 = cards[0];
+        const card2 = cards[1];
+
+        // 至尊(武尊)：三点 + 六点
+        if (card1.type === 'wu' && card2.type === 'wu') {
+            const names = [card1.name, card2.name].sort();
+            if ((names[0] === '三点' && names[1] === '六点') ||
+                (card1.points === 3 && card2.points === 6) ||
+                (card1.points === 6 && card2.points === 3)) {
+                return { isSpecial: true, type: 'zhiZun' };
+            }
+        }
+
+        // 文至尊：双伶冧六
+        if (card1.type === 'wen' && card2.type === 'wen' && 
+            card1.name === '伶冧六' && card2.name === '伶冧六') {
+            return { isSpecial: true, type: 'wenZhiZun' };
         }
 
         return { isSpecial: false };
     }
 
     validateFollowPlay(cards, activePlays) {
-        const lastPlay = activePlays[activePlays.length - 1];
+        // 找到最后一个非过牌的有效出牌作为比较基准
+        let lastPlay = null;
+        for (let i = activePlays.length - 1; i >= 0; i--) {
+            if (!activePlays[i].passed) {
+                lastPlay = activePlays[i];
+                break;
+            }
+        }
+        
+        // 如果所有人都过牌了，不应该发生
+        if (!lastPlay) {
+            return { valid: false, error: '没有有效的出牌可以比较' };
+        }
+        
         const requiredCount = lastPlay.cards.length;
 
         if (cards.length !== requiredCount) {
             return { valid: false, error: `需要出${requiredCount}张牌` };
         }
 
-        // 检查当前牌的特殊组合
-        const currentSpecial = this.checkSpecialCombination(cards);
+        // 单张逻辑
+        if (requiredCount === 1) {
+            const lastCard = lastPlay.cards[0];
+            const currentCard = cards[0];
 
-        if (requiredCount === 2) {
-            // 检查上家是否是母至尊
-            const lastSpecial = this.checkSpecialCombination(lastPlay.cards);
-            if (lastSpecial.type === 'muZhiZun') {
-                return { valid: false, error: '母至尊无敌，无法打败' };
+            // 必须同类型
+            if (lastCard.type !== currentCard.type) {
+                return { valid: false, error: '必须出同类型的牌' };
             }
 
-            // 检查上家是否是文至尊（双鼻屎六）
-            const lastIsWenZhiZun = lastPlay.cards[0].rank === 11 && 
-                                    lastPlay.cards[1].rank === 11 && 
-                                    lastPlay.cards[0].type === 'wen';
-
-            if (lastIsWenZhiZun) {
-                // 只有高脚七对子能打文至尊
-                const isGaoJiaoQi = cards[0].rank === 10 && 
-                                    cards[1].rank === 10 && 
-                                    cards[0].type === 'wen';
-                
-                if (isGaoJiaoQi) {
-                    return { valid: true };
-                } else {
-                    return { valid: false, error: '文至尊只有高脚七对子能打' };
+            // power越大越强（使用服务器的power值）
+            if (currentCard.power <= lastCard.power) {
+                if (currentCard.power === lastCard.power) {
+                    return { valid: false, error: '相同的牌，先出为大，无法打出' };
                 }
-            }
-
-            // 检查当前是否是文至尊或母至尊
-            const currentIsWenZhiZun = cards[0].rank === 11 && 
-                                        cards[1].rank === 11 && 
-                                        cards[0].type === 'wen';
-            
-            if (currentIsWenZhiZun || currentSpecial.type === 'muZhiZun') {
-                return { valid: true };
-            }
-
-            // 检查上家和当前牌是否是合法对子
-            const lastIsPair = this.isPairCards(lastPlay.cards);
-            const currentIsPair = this.isPairCards(cards);
-
-            if (!lastIsPair && !lastSpecial.isSpecial) {
-                return { valid: false, error: '上家不是对子' };
-            }
-
-            if (!currentIsPair && !currentSpecial.isSpecial) {
-                return { valid: false, error: '必须出对子或特殊组合' };
-            }
-
-            // 比较对子大小
-            const canBeat = this.canBeatPair(cards, lastPlay.cards);
-            if (!canBeat) {
-                return { valid: false, error: '您的对子不够大' };
+                return { valid: false, error: '您的牌不够大' };
             }
 
             return { valid: true };
         }
 
-        // 单张比较
-        if (cards[0].rank >= lastPlay.cards[0].rank) {
-            return { valid: false, error: '您的牌不够大' };
-        }
+        // 3张牌逻辑
+        if (requiredCount === 3) {
+            const lastTriple = this.getTripleWenWuType(lastPlay.cards);
+            const currentTriple = this.getTripleWenWuType(cards);
 
-        return { valid: true };
-    }
-
-    // 检查两张牌是否构成合法对子
-    isPairCards(cards) {
-        if (cards.length !== 2) return false;
-
-        // 文牌对子
-        if (cards[0].type === 'wen' && cards[1].type === 'wen' && cards[0].rank === cards[1].rank) {
-            return true;
-        }
-
-        // 武牌对子
-        if (cards[0].type === 'wu' && cards[1].type === 'wu') {
-            const ranks = [cards[0].rank, cards[1].rank].sort((a, b) => b - a);
-            const validWuPairs = [
-                [9, 6], [9, 5], [9, 8], [8, 7], [7, 6], [5, 3]
-            ];
-            for (const validPair of validWuPairs) {
-                if (ranks[0] === validPair[0] && ranks[1] === validPair[1]) {
-                    return true;
-                }
+            if (!lastTriple) {
+                return { valid: false, error: '上家不是有效的三张组合' };
             }
+
+            if (!currentTriple) {
+                return { valid: false, error: '必须出有效的三张文武组合' };
+            }
+
+            // 必须严格配对：2文+1武 对 2文+1武，1文+2武 对 1文+2武
+            const lastWenCount = lastPlay.cards.filter(c => c.type === 'wen').length;
+            const currentWenCount = cards.filter(c => c.type === 'wen').length;
+
+            if (lastWenCount !== currentWenCount) {
+                const lastDesc = lastWenCount === 2 ? '2文+1武' : '1文+2武';
+                const currentDesc = currentWenCount === 2 ? '2文+1武' : '1文+2武';
+                return { valid: false, error: `上家是${lastDesc}，您必须出${lastDesc}才能打（您出的是${currentDesc}）` };
+            }
+
+            // 配对后比较组合类型：天九 > 地八 > 人七 > 和五
+            // 先出为大：相同组合无法打出
+            const typeOrder = { 'tianJiu': 1, 'diBa': 2, 'renQi': 3, 'heWu': 4 };
+            const currentOrder = typeOrder[currentTriple.type];
+            const lastOrder = typeOrder[lastTriple.type];
+            
+            if (currentOrder >= lastOrder) {
+                if (currentOrder === lastOrder) {
+                    return { valid: false, error: `相同的${currentTriple.name}，先出为大，无法打出` };
+                }
+                return { valid: false, error: `${currentTriple.name}打不过${lastTriple.name}` };
+            }
+
+            return { valid: true };
         }
 
-        return false;
+        // 4张牌逻辑
+        if (requiredCount === 4) {
+            const lastQuad = this.getQuadWenWuType(lastPlay.cards);
+            const currentQuad = this.getQuadWenWuType(cards);
+
+            if (!lastQuad) {
+                return { valid: false, error: '上家不是有效的四张组合' };
+            }
+
+            if (!currentQuad) {
+                return { valid: false, error: '必须出有效的四张文武组合（2文+2武）' };
+            }
+
+            // 四张牌都是2文+2武，只需比较是哪种组合
+            // 天九 > 地八 > 人七 > 和五
+            const typeOrder = { 'tianJiu': 1, 'diBa': 2, 'renQi': 3, 'heWu': 4 };
+            const currentOrder = typeOrder[currentQuad.type];
+            const lastOrder = typeOrder[lastQuad.type];
+
+            if (currentOrder >= lastOrder) {
+                if (currentOrder === lastOrder) {
+                    return { valid: false, error: `相同的${currentQuad.name}，先出为大，无法打出` };
+                }
+                return { valid: false, error: `${currentQuad.name}打不过${lastQuad.name}` };
+            }
+
+            return { valid: true };
+        }
+
+        // 对子逻辑 (requiredCount === 2)
+        const lastSpecial = this.checkSpecialCombination(lastPlay.cards);
+        const currentSpecial = this.checkSpecialCombination(cards);
+        
+        // 判断上家是否是先出（currentDong中第一个出牌）
+        const isLastPlayFirst = activePlays.length === 1;
+        
+        // 至尊(武尊)特殊规则：只有先出时才无敌
+        if (lastSpecial.type === 'zhiZun') {
+            if (isLastPlayFirst) {
+                return { valid: false, error: '至尊先出无敌，无法打败' };
+            }
+            // 至尊跟牌时按正常power=9计算，基本所有对子都能打
+        }
+
+        // 当前出至尊：先出时无敌，跟牌时power=9（很小）
+        if (currentSpecial.type === 'zhiZun') {
+            if (!isLastPlayFirst) {
+                // 如果不是第一轮，至尊跟牌power很小，提示一下
+                console.log('至尊跟牌时power=9，可能打不过上家');
+            }
+            // 让服务器做最终判断
+            return { valid: true };
+        }
+
+        // 文至尊特殊规则：先出时只有双高脚七能打
+        if (lastSpecial.type === 'wenZhiZun') {
+            if (isLastPlayFirst) {
+                const isGaoJiaoQi = cards[0].type === 'wen' && cards[1].type === 'wen' && 
+                                    cards[0].name === '高脚七' && cards[1].name === '高脚七';
+                if (isGaoJiaoQi) {
+                    return { valid: true };
+                }
+                return { valid: false, error: '文至尊先出时，只有双高脚七能打' };
+            }
+            // 文至尊跟牌时按正常power=50计算
+        }
+
+        if (currentSpecial.type === 'wenZhiZun') {
+            if (!isLastPlayFirst) {
+                console.log('文至尊跟牌时power=50');
+            }
+            // 让服务器做最终判断
+            return { valid: true };
+        }
+
+        // 普通对子比较
+        const lastPairType = this.getPairType(lastPlay.cards);
+        const currentPairType = this.getPairType(cards);
+
+        if (!lastPairType) {
+            return { valid: false, error: '上家不是有效对子' };
+        }
+
+        if (!currentPairType) {
+            // 提供更详细的错误信息
+            const cardTypes = cards.map(c => c.type).join(', ');
+            const cardNames = cards.map(c => c.name).join(' + ');
+            return { valid: false, error: `${cardNames} 不是有效的对子` };
+        }
+
+        // 必须同类型
+        if (lastPairType !== currentPairType) {
+            const typeNames = {
+                'wen': '文对',
+                'wu': '武对',
+                'wenwu': '文武对'
+            };
+            const lastTypeName = typeNames[lastPairType] || lastPairType;
+            const currentTypeName = typeNames[currentPairType] || currentPairType;
+            return { valid: false, error: `上家出的是${lastTypeName}，您出的是${currentTypeName}，类型不匹配` };
+        }
+
+        // 比大小
+        return this.comparePairs(cards, lastPlay.cards, currentPairType);
     }
 
-    // 比较两个对子的大小（返回true表示cards1能打败cards2）
-    canBeatPair(cards1, cards2) {
-        // 文牌对子 vs 文牌对子：rank越小越大
-        if (cards1[0].type === 'wen' && cards2[0].type === 'wen') {
-            return cards1[0].rank < cards2[0].rank;
+    // 比较两个对子的大小
+    comparePairs(cards1, cards2, pairType) {
+        if (pairType === 'wen') {
+            // 文对：使用power，power越大越强，先出为大
+            const power1 = cards1[0].power + cards1[1].power;
+            const power2 = cards2[0].power + cards2[1].power;
+            
+            if (power1 <= power2) {
+                if (power1 === power2) {
+                    return { valid: false, error: '相同的文对，先出为大，无法打出' };
+                }
+                return { valid: false, error: '您的文对不够大' };
+            }
+            return { valid: true };
         }
 
-        // 武牌对子 vs 武牌对子：按照固定顺序
-        if (cards1[0].type === 'wu' && cards2[0].type === 'wu') {
-            const wuPairOrder = [
-                [9, 6], // 至尊 - 最大
-                [9, 5], // 饿五
-                [9, 8], // 杂九
-                [8, 7], // 杂八
-                [7, 6], // 杂七
-                [5, 3]  // 杂五 - 最小
-            ];
-
-            const ranks1 = [cards1[0].rank, cards1[1].rank].sort((a, b) => b - a);
-            const ranks2 = [cards2[0].rank, cards2[1].rank].sort((a, b) => b - a);
-
-            const order1 = wuPairOrder.findIndex(p => p[0] === ranks1[0] && p[1] === ranks1[1]);
-            const order2 = wuPairOrder.findIndex(p => p[0] === ranks2[0] && p[1] === ranks2[1]);
-
-            return order1 < order2; // 索引越小越大
+        if (pairType === 'wu') {
+            // 武对：使用points，点数越大越强，先出为大
+            const points1 = cards1[0].points;
+            const points2 = cards2[0].points;
+            
+            if (points1 <= points2) {
+                if (points1 === points2) {
+                    return { valid: false, error: '相同的武对，先出为大，无法打出' };
+                }
+                return { valid: false, error: '您的武对不够大' };
+            }
+            return { valid: true };
         }
 
-        // 文牌对子 vs 武牌对子：文牌对子更大
-        if (cards1[0].type === 'wen' && cards2[0].type === 'wu') {
-            return true;
+        if (pairType === 'wenwu') {
+            // 文武对：使用power，power越大越强，先出为大
+            const power1 = cards1[0].power + cards1[1].power;
+            const power2 = cards2[0].power + cards2[1].power;
+
+            if (power1 <= power2) {
+                if (power1 === power2) {
+                    return { valid: false, error: '相同的文武对，先出为大，无法打出' };
+                }
+                return { valid: false, error: '您的文武对不够大' };
+            }
+            return { valid: true };
         }
 
-        // 武牌对子 vs 文牌对子：武牌对子更小
-        if (cards1[0].type === 'wu' && cards2[0].type === 'wen') {
-            return false;
-        }
-
-        return false;
+        return { valid: false, error: '未知的对子类型' };
     }
 
     playSelectedCards() {
@@ -823,6 +1069,8 @@ class TianJiuGame {
         // 客户端先验证
         const validation = this.validatePlay(this.selectedCards);
         if (!validation.valid) {
+            // 显示错误提示
+            this.showError(validation.error || '出牌无效');
             return;
         }
 
@@ -834,6 +1082,52 @@ class TianJiuGame {
         this.awaitingPlayConfirmation = true;
         // 禁用按钮，直到确认
         this.updateControlButtons();
+    }
+
+    showError(message) {
+        // 创建错误提示元素
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-toast';
+        errorDiv.textContent = message;
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 38, 38, 0.95);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: fadeInOut 2s ease-in-out;
+        `;
+
+        // 添加动画样式
+        if (!document.getElementById('error-toast-style')) {
+            const style = document.createElement('style');
+            style.id = 'error-toast-style';
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, -60%); }
+                    15% { opacity: 1; transform: translate(-50%, -50%); }
+                    85% { opacity: 1; transform: translate(-50%, -50%); }
+                    100% { opacity: 0; transform: translate(-50%, -40%); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(errorDiv);
+
+        // 2秒后自动移除
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 2000);
     }
 
     pass() {
@@ -872,8 +1166,15 @@ class TianJiuGame {
     }
 
     sortHand() {
-        // 按rank排序
-        this.hand.sort((a, b) => a.rank - b.rank);
+        // 按类型和power排序：先文后武，同类型按power从大到小
+        this.hand.sort((a, b) => {
+            // 文牌在前，武牌在后
+            if (a.type !== b.type) {
+                return a.type === 'wen' ? -1 : 1;
+            }
+            // 同类型按power降序（大牌在前）
+            return b.power - a.power;
+        });
         this.renderHand();
     }
 
@@ -897,15 +1198,16 @@ class TianJiuGame {
             this.awaitingPlayConfirmation = false;
             this.renderHand();
             this.updateControlButtons();
-            
-            // 更新自己的牌数
-            const myCardsCount = this.elements[`pos${this.position}CardsCount`];
-            if (myCardsCount) {
-                myCardsCount.textContent = `${this.hand.length}张`;
+        }
+        
+        // 使用服务器发送的准确手牌数量更新所有玩家
+        if (data.handCounts) {
+            for (let i = 0; i < 4; i++) {
+                const cardsCount = this.elements[`pos${i}CardsCount`];
+                if (cardsCount) {
+                    cardsCount.textContent = `${data.handCounts[i]}张`;
+                }
             }
-        } else {
-            // 更新对手剩余牌数
-            this.updateOpponentCardCount(data.playerIndex, -data.cards.length);
         }
     }
 
@@ -920,6 +1222,16 @@ class TianJiuGame {
         
         // 重新渲染所有出牌区域
         this.renderPlayedCards(this.currentDong);
+        
+        // 使用服务器发送的准确手牌数量更新所有玩家
+        if (data.handCounts) {
+            for (let i = 0; i < 4; i++) {
+                const cardsCount = this.elements[`pos${i}CardsCount`];
+                if (cardsCount) {
+                    cardsCount.textContent = `${data.handCounts[i]}张`;
+                }
+            }
+        }
     }
 
     renderPlayedCards(currentDong) {
@@ -1030,6 +1342,49 @@ class TianJiuGame {
             
             this.elements.winnerName.textContent = winText;
         }, 2000);
+    }
+
+    handlePlayerOut(data) {
+        const playerIndex = data.playerIndex;
+        this.outPlayers[playerIndex] = true;
+        
+        // 添加OUT标记到玩家信息区域
+        const playerInfoContainer = this.getPlayerInfoContainer(playerIndex);
+        if (playerInfoContainer) {
+            // 移除旧的OUT标记（如果存在）
+            const oldOutBadge = playerInfoContainer.querySelector('.out-badge');
+            if (oldOutBadge) {
+                oldOutBadge.remove();
+            }
+            
+            // 创建OUT标记
+            const outBadge = document.createElement('div');
+            outBadge.className = 'out-badge';
+            outBadge.textContent = 'OUT';
+            playerInfoContainer.appendChild(outBadge);
+            
+            // 添加动画效果
+            setTimeout(() => {
+                outBadge.classList.add('show');
+            }, 10);
+        }
+        
+        // 如果被OUT的是当前玩家，禁止出牌操作
+        if (playerIndex === this.position) {
+            this.updateControlButtons();
+            this.showToast('最后一张牌且无栋数，已被OUT！', 3000);
+        }
+    }
+
+    getPlayerInfoContainer(playerIndex) {
+        const relativePos = (playerIndex - this.position + 4) % 4;
+        if (relativePos === 0) {
+            // 玩家自己 - 返回手牌区域
+            return document.querySelector('.player-hand-section');
+        } else {
+            // 其他玩家 - 返回对应的play-zone
+            return document.querySelector(`.player-play-zone[data-position="${playerIndex}"]`);
+        }
     }
 
     renderOpponentCards() {
