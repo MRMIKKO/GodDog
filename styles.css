@@ -340,6 +340,7 @@ button:disabled {
 
 /* ==================== 游戏界面 ==================== */
 .game-container {
+    position: relative; /* 为内部绝对定位元素提供定位上下文 */
     width: 100vw;
     height: 100vh;
     height: 100dvh; /* 动态视口高度，避免地址栏影响 */
@@ -368,28 +369,103 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 0 1.2rem;
-    border-radius: 1rem;
+    background: rgba(0, 0, 0, 0.85);
+    padding: 0 1.5rem;
+    border-radius: 1.2rem;
     z-index: 10;
-    backdrop-filter: blur(0.5rem);
+    backdrop-filter: blur(1rem);
+    border: 0.2rem solid rgba(255, 215, 0, 0.3);
 }
 
-.current-dong {
-    font-size: 0.9rem;
-    color: var(--text-light);
-}
-
-.current-dong strong {
-    color: var(--gold-color);
-    font-size: 1.1rem;
-}
-
-.turn-indicator {
-    font-size: 0.85rem;
-    color: #999;
+/* Kam公共池信息显示 */
+.kam-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     flex: 1;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0.5rem;
+    border-radius: 1rem;
+}
+
+.kam-info:hover {
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.kam-info.highlight-kam {
+    animation: highlightKam 1.5s ease-in-out infinite;
+    background: rgba(255, 215, 0, 0.2);
+}
+
+@keyframes highlightKam {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 2rem rgba(255, 215, 0, 0.6);
+    }
+}
+
+.kam-label {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: var(--gold-color);
+    text-shadow: 0 0.2rem 0.4rem rgba(255, 215, 0, 0.5);
+}
+
+.kam-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-color), #ff6b6b);
+    padding: 0.4rem 1.2rem;
+    border-radius: 0.8rem;
+    min-width: 4rem;
     text-align: center;
+    box-shadow: 0 0.4rem 1rem rgba(196, 30, 58, 0.5),
+                inset 0 0.1rem 0.3rem rgba(255, 255, 255, 0.3);
+    animation: kamPulse 2s ease-in-out infinite;
+}
+
+@keyframes kamPulse {
+    0%, 100% {
+        box-shadow: 0 0.4rem 1rem rgba(196, 30, 58, 0.5),
+                    inset 0 0.1rem 0.3rem rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0.4rem 1.5rem rgba(196, 30, 58, 0.8),
+                    inset 0 0.1rem 0.3rem rgba(255, 255, 255, 0.5),
+                    0 0 1.5rem rgba(255, 215, 0, 0.4);
+    }
+}
+
+.kam-hint {
+    font-size: 1.2rem;
+    color: var(--gold-color);
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+/* Kam值高亮效果（当值>=24时） */
+.kam-value.high-value {
+    animation: kamHighlight 1s ease-in-out infinite;
+}
+
+@keyframes kamHighlight {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0.4rem 1rem rgba(196, 30, 58, 0.5),
+                    inset 0 0.1rem 0.3rem rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0.6rem 2rem rgba(255, 215, 0, 1),
+                    inset 0 0.1rem 0.3rem rgba(255, 255, 255, 0.5),
+                    0 0 2rem rgba(255, 215, 0, 0.8);
+    }
 }
 
 /* 2x2 出牌网格 */
@@ -484,6 +560,16 @@ button:disabled {
     gap: 0.3rem;
     font-size: 0.6rem;
     line-height: 1.2;
+}
+
+.score-display {
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.2);
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.3rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .cards-count {
@@ -689,6 +775,7 @@ button:disabled {
 }
 
 .player-cards-container {
+    position: relative; /* 为结算蒙层提供定位上下文 */
     padding: 0.5rem 0.7rem 0.8rem 0.7rem;
     overflow: visible;
     min-height: 21rem; /* 压缩手牌区高度 */
@@ -1046,7 +1133,7 @@ button:disabled {
 /* ==================== OUT标记样式 ==================== */
 .out-badge {
     position: absolute;
-    top: 50%;
+    top: 60%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0);
     background: linear-gradient(135deg, #c41e3a, #8b0000);
@@ -1123,4 +1210,358 @@ button, .card, input {
 * {
     -webkit-touch-callout: none;
 }
+
+/* ==================== 结算面板样式 ==================== */
+.settlement-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.settlement-overlay.show {
+    opacity: 1;
+}
+
+.settlement-panel {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 2rem;
+    padding: 2.5rem;
+    max-width: 90%;
+    max-height: 80%;
+    overflow-y: auto;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+    border: 0.2rem solid var(--gold-color);
+}
+
+.settlement-title {
+    text-align: center;
+    font-size: 2.4rem;
+    color: var(--gold-color);
+    margin-bottom: 2rem;
+    text-shadow: 0 0.2rem 0.4rem rgba(255, 215, 0, 0.5);
+}
+
+.winner-info {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding: 1.5rem;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 1rem;
+}
+
+.winner-name {
+    font-size: 2.2rem;
+    color: var(--gold-color);
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.winner-detail {
+    font-size: 1.6rem;
+    color: #fff;
+}
+
+.settlement-details {
+    margin-bottom: 2rem;
+}
+
+.settlement-details h3 {
+    font-size: 1.8rem;
+    color: var(--gold-color);
+    margin-bottom: 1rem;
+}
+
+.score-changes {
+    margin-bottom: 2rem;
+}
+
+.score-change-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    margin-bottom: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.8rem;
+    font-size: 1.6rem;
+}
+
+.player-label {
+    flex: 1;
+    color: #fff;
+}
+
+.score-change {
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.8rem;
+}
+
+.score-change.positive {
+    color: #4caf50;
+}
+
+.score-change.negative {
+    color: #f44336;
+}
+
+.score-total {
+    flex: 1;
+    text-align: right;
+    color: var(--gold-color);
+}
+
+.public-pool-info {
+    padding: 1.5rem;
+    background: rgba(196, 30, 58, 0.2);
+    border-radius: 1rem;
+    border: 0.1rem solid var(--primary-color);
+    text-align: center;
+    font-size: 1.6rem;
+    color: #fff;
+}
+
+.pool-winner {
+    margin-top: 1rem;
+    font-size: 1.8rem;
+    color: var(--gold-color);
+    font-weight: bold;
+}
+
+.dealer-bonus {
+    margin-top: 1rem;
+    font-size: 1.6rem;
+    color: #ff9800;
+}
+
+.next-game-info {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+}
+
+.next-game-info p {
+    font-size: 1.6rem;
+    color: #fff;
+    margin-bottom: 1rem;
+}
+
+.dealer-next {
+    font-size: 1.8rem;
+    color: var(--gold-color);
+    font-weight: bold;
+}
+
+/* ==================== 交互式结算界面（游戏内蒙层） ==================== */
+.settlement-overlay-ingame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.settlement-overlay-ingame.hidden {
+    display: none;
+}
+
+.settlement-overlay-ingame:not(.hidden) {
+    pointer-events: auto;
+}
+
+.settlement-mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 1;
+}
+
+.settlement-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    max-width: 90%;
+}
+
+.settlement-header {
+    position: absolute;
+    left: 55%;
+    bottom: 3.5rem;
+    font-size: 2rem;
+    color: #ff4444;
+    text-shadow: 
+        0 0 10px rgba(255, 68, 68, 0.8),
+        0 0 20px rgba(255, 68, 68, 0.5),
+        0 2px 4px rgba(0, 0, 0, 0.8);
+    text-align: center;
+    margin: 0;
+    letter-spacing: 0.2rem;
+    font-weight: bold;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: translateX(-50%) translateY(-50%) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateX(-50%) translateY(-50%) scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+/* 猪仔存钱罐容器 */
+.piggy-bank-container {
+    position: relative;
+    width: 100%;
+    max-width: 30rem;
+    height: 25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+}
+
+.piggy-bank {
+    position: relative;
+    width: 20rem;
+    height: 15rem;
+    cursor: grab;
+    transition: transform 0.1s ease-out;
+    user-select: none;
+}
+
+.piggy-bank:active {
+    cursor: grabbing;
+}
+
+.piggy-image {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0.5rem 2rem rgba(255, 105, 180, 0.5));
+    pointer-events: none;
+}
+
+/* 支付计数器 */
+.payment-counter {
+    position: absolute;
+    top: -3rem;
+    left: 50%;
+    transform: translateX(-50%) scale(1);
+    font-size: 4rem;
+    font-weight: 900;
+    color: #f44336;
+    text-shadow: 0 0.3rem 0.6rem rgba(244, 67, 54, 0.8),
+                 0 0 2rem rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.payment-counter.show {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.2);
+}
+
+/* 金币动画 */
+.coin {
+    position: absolute;
+    width: 3rem;
+    height: 3rem;
+    background: radial-gradient(circle at 30% 30%, #ffd700, #ff8c00);
+    border-radius: 50%;
+    border: 0.2rem solid #ff6b00;
+    box-shadow: 0 0.2rem 0.8rem rgba(255, 140, 0, 0.8),
+                inset 0 0.1rem 0.3rem rgba(255, 255, 255, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #8b4513;
+    text-shadow: 0 0.1rem 0.2rem rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.coin::before {
+    content: '¥';
+}
+
+@keyframes coinFly {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(0.5) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-15rem) scale(1) rotate(360deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-25rem) scale(0.5) rotate(720deg);
+    }
+}
+
+/* 收钱玩家的金币接收动画 */
+.receiving-coins {
+    position: relative;
+}
+
+.receiving-coins::after {
+    content: '+💰';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    color: #4caf50;
+    text-shadow: 0 0.3rem 0.6rem rgba(76, 175, 80, 0.8);
+    animation: receiveCoin 1s ease-out;
+    pointer-events: none;
+}
+
+@keyframes receiveCoin {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -100%);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.5);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -20%);
+    }
+}
+
 

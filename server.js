@@ -32,11 +32,14 @@ class GameRoom {
       gameOver: false,
       winner: null,
       dongScores: [0, 0, 0, 0], // 每个玩家赢得的栋数
-      scores: [0, 0, 0, 0], // 每个玩家的积分
+      scores: [40, 40, 40, 40], // 每个玩家的初始积分为40分
       dealerPosition: -1, // 庄家位置
       isFirstHand: true, // 是否是第一局
       waitingForDice: false, // 是否等待摇骰
-      outPlayers: [false, false, false, false] // 标记哪些玩家被OUT（最后一张牌无栋数）
+      outPlayers: [false, false, false, false], // 标记哪些玩家被OUT（最后一张牌无栋数）
+      publicPool: 40, // 公共积分池初始为40分
+      consecutiveWins: 0, // 庄家连胜次数
+      gameCount: 0 // 游戏局数计数
     };
   }
 
@@ -750,8 +753,81 @@ class GameRoom {
       currentDong: this.gameState.currentDong,
       gameOver: this.gameState.gameOver,
       winner: this.gameState.winner,
-      dongScores: this.gameState.dongScores
+      dongScores: this.gameState.dongScores,
+      publicPool: this.gameState.publicPool,
+      scores: this.gameState.scores
     };
+  }
+
+  // 检测特殊牌型（至尊、四天九、四地八、四人七、四和五）
+  checkSpecialCombination(cards) {
+    if (!cards || cards.length < 2) {
+      return null;
+    }
+
+    const cardIds = cards.map(c => c.id).sort().join('-');
+    const cardNames = cards.map(c => c.name);
+
+    // 文至尊：天+地
+    if (cards.length === 2) {
+      const hasWenZhiZun = (cardIds.includes('WT') && cardIds.includes('WD')) ||
+                           (cardNames.includes('天') && cardNames.includes('地'));
+      if (hasWenZhiZun) {
+        return {
+          type: 'wenZhiZun',
+          name: '文至尊',
+          needsSettlement: true,
+          canBeBeaten: true // 可被双高脚七打败
+        };
+      }
+    }
+
+    // 检测四张相同的牌
+    if (cards.length === 4) {
+      const firstCardName = cards[0].name;
+      const allSame = cards.every(c => c.name === firstCardName);
+      
+      if (allSame) {
+        // 四天九
+        if (firstCardName === '天') {
+          return {
+            type: 'fourTian',
+            name: '四天九',
+            needsSettlement: true,
+            power: 1000
+          };
+        }
+        // 四地八
+        if (firstCardName === '地') {
+          return {
+            type: 'fourDi',
+            name: '四地八',
+            needsSettlement: true,
+            power: 900
+          };
+        }
+        // 四人七
+        if (firstCardName === '人') {
+          return {
+            type: 'fourRen',
+            name: '四人七',
+            needsSettlement: true,
+            power: 800
+          };
+        }
+        // 四和五
+        if (firstCardName === '和') {
+          return {
+            type: 'fourHe',
+            name: '四和五',
+            needsSettlement: true,
+            power: 700
+          };
+        }
+      }
+    }
+
+    return null;
   }
 
   // 验证出牌是否合法
@@ -1620,6 +1696,164 @@ class GameRoom {
     return false;
   }
 
+  // 计算一局结束后的积分结算
+  calculateGameScores(winnerIndex) {
+    const winnerDongs = this.gameState.dongScores[winnerIndex];
+    const isDealer = winnerIndex === this.gameState.dealerPosition;
+    const scoreChanges = [0, 0, 0, 0];
+    const scoreDetails = [];
+
+    console.log(`=== 积分结算 ===`);
+    console.log(`赢家: 玩家${winnerIndex}, 栋数: ${winnerDongs}, 是否庄家: ${isDealer}`);
+    console.log(`当前连庄次数: ${this.gameState.consecutiveWins}`);
+
+    // 计算连庄倍数（如果赢家是庄家）
+    let dealerMultiplier = 1;
+    if (isDealer) {
+      dealerMultiplier = this.gameState.consecutiveWins + 1;
+    }
+
+    // 计算每个输家应该支付的分数
+    for (let i = 0; i < 4; i++) {
+      if (i === winnerIndex) continue; // 跳过赢家自己
+      
+      const loserDongs = this.gameState.dongScores[i];
+      let payment = 0;
+
+      // 根据输家的栋数计算基础分数
+      if (loserDongs === 1) {
+        payment = isDealer ? 7 : 4;
+      } else if (loserDongs === 2) {
+        payment = isDealer ? 5 : 3;
+      } else if (loserDongs === 3) {
+        payment = isDealer ? 3 : 2;
+      } else if (loserDongs >= 4) {
+        payment = 1;
+      } else {
+        // 0栋的情况
+        payment = isDealer ? 10 : 5;
+      }
+
+      // 如果赢家是庄家，应用连庄倍数
+      if (isDealer && dealerMultiplier > 1) {
+        // 连庄加成：2连=+3，3连=+6，4连=+9...
+        const bonus = (dealerMultiplier - 1) * 3;
+        payment += bonus;
+      }
+
+      scoreChanges[i] -= payment;
+      scoreChanges[winnerIndex] += payment;
+
+      scoreDetails.push({
+        fromPlayer: i,
+        toPlayer: winnerIndex,
+        amount: payment,
+        loserDongs: loserDongs
+      });
+
+      console.log(`玩家${i}(${loserDongs}栋) -> 玩家${winnerIndex}: ${payment}分`);
+    }
+
+    // 赢家向公共池投入4分
+    scoreChanges[winnerIndex] -= 4;
+    this.gameState.publicPool += 4;
+    console.log(`赢家玩家${winnerIndex}向公共池投入4分，当前公共池: ${this.gameState.publicPool}分`);
+
+    // 检查是否获得公共池（≥6栋获胜）
+    let publicPoolWinner = null;
+    if (winnerDongs >= 6 && this.gameState.publicPool > 0) {
+      scoreChanges[winnerIndex] += this.gameState.publicPool;
+      publicPoolWinner = {
+        player: winnerIndex,
+        amount: this.gameState.publicPool,
+        dongs: winnerDongs
+      };
+      console.log(`玩家${winnerIndex}以${winnerDongs}栋获胜，赢得公共池${this.gameState.publicPool}分！`);
+      
+      // 重置公共池，所有人投入10分
+      this.gameState.publicPool = 40; // 4人各投10分
+      for (let i = 0; i < 4; i++) {
+        scoreChanges[i] -= 10;
+      }
+      console.log(`公共池重置，每人投入10分，新公共池: ${this.gameState.publicPool}分`);
+    }
+
+    // 应用积分变化
+    for (let i = 0; i < 4; i++) {
+      this.gameState.scores[i] += scoreChanges[i];
+    }
+
+    // 更新连庄次数
+    if (isDealer) {
+      this.gameState.consecutiveWins++;
+      console.log(`庄家连胜，连庄次数: ${this.gameState.consecutiveWins}`);
+    } else {
+      this.gameState.consecutiveWins = 0;
+      console.log(`非庄家获胜，连庄次数重置`);
+    }
+
+    console.log(`最终积分: ${this.gameState.scores.join(', ')}`);
+    console.log(`=== 结算完成 ===`);
+
+    return {
+      scoreChanges,
+      scoreDetails,
+      publicPoolWinner,
+      dealerMultiplier: isDealer ? dealerMultiplier : 0,
+      newPublicPool: this.gameState.publicPool,
+      finalScores: [...this.gameState.scores]
+    };
+  }
+
+  // 准备下一局游戏
+  prepareNextGame() {
+    console.log('准备下一局游戏...');
+    
+    // 重置游戏状态，但保留积分和庄家位置
+    this.gameState.currentRound = 0;
+    this.gameState.hands = [[], [], [], []];
+    this.gameState.currentDong = [];
+    this.gameState.dongFirstPlayer = -1;
+    this.gameState.dongScores = [0, 0, 0, 0];
+    this.gameState.outPlayers = [false, false, false, false];
+    this.gameState.gameOver = false;
+    this.gameState.winner = null;
+    
+    // 庄家已经在上一局结束时更新了
+    // 发牌并开始新一局
+    this.initializeDeck();
+    this.dealCards();
+    
+    // 发送各玩家的手牌
+    this.players.forEach((player, index) => {
+      this.sendToPlayer(player.playerId, {
+        type: 'dealCards',
+        cards: this.gameState.hands[index],
+        position: index
+      });
+    });
+
+    // 广播新一局开始
+    this.broadcast({
+      type: 'newGame',
+      gameCount: this.gameState.gameCount + 1,
+      dealerPosition: this.gameState.dealerPosition,
+      consecutiveWins: this.gameState.consecutiveWins,
+      scores: this.gameState.scores,
+      publicPool: this.gameState.publicPool
+    });
+
+    // 庄家先出牌
+    this.gameState.currentPlayer = this.gameState.dealerPosition;
+    this.broadcast({
+      type: 'turnChange',
+      currentPlayer: this.gameState.currentPlayer
+    });
+
+    // 如果庄家是机器人，触发自动出牌
+    this.botAutoPlay();
+  }
+
   determineDongWinner() {
     const activePlays = this.gameState.currentDong.filter(d => d.cards && d.cards.length > 0);
     
@@ -1851,26 +2085,42 @@ class GameRoom {
     });
     
     if (allActivePlayersEmpty) {
-      this.gameState.gameOver = true;
-      // 找出积分最高的玩家
-      let maxScore = Math.max(...this.gameState.scores);
-      let finalWinner = this.gameState.scores.indexOf(maxScore);
+      // 一局游戏结束，等待手动结算
+      this.gameState.gameCount++;
       
-      this.gameState.winner = finalWinner;
-      
-      // 赢家成为下一局的庄家
-      this.gameState.dealerPosition = finalWinner;
+      // 不再自动计算积分，而是发送结算界面信号
+      // 赢家成为下一局的庄家（如果不是庄家获胜的话）
+      if (winnerPlay.playerIndex !== this.gameState.dealerPosition) {
+        this.gameState.dealerPosition = winnerPlay.playerIndex;
+      }
 
-      const finalWinnerObj = this.players[finalWinner];
+      // 保存赢家信息用于罚款检查
+      this.gameState.lastWinner = winnerPlay.playerIndex;
+      this.gameState.settlementInfo = {
+        winnerPaidToKam: false,
+        winnerPayAmount: 0
+      };
+
+      const finalWinnerObj = this.players[winnerPlay.playerIndex];
       setTimeout(() => {
         this.broadcast({
-          type: 'gameOver',
-          winner: finalWinner,
-          winnerName: finalWinnerObj ? finalWinnerObj.playerName : `玩家${finalWinner}`,
-          finalScores: this.gameState.scores,
-          dongScores: this.gameState.dongScores
+          type: 'gameEnd',
+          winner: winnerPlay.playerIndex,
+          winnerName: finalWinnerObj ? finalWinnerObj.playerName : `玩家${winnerPlay.playerIndex}`,
+          winnerDongs: this.gameState.dongScores[winnerPlay.playerIndex],
+          dongScores: this.gameState.dongScores,
+          scores: this.gameState.scores,
+          gameCount: this.gameState.gameCount,
+          dealerPosition: this.gameState.dealerPosition,
+          publicPool: this.gameState.publicPool,
+          // 提供结算建议，但不强制
+          settlementSuggestion: {
+            isDealerWin: winnerPlay.playerIndex === this.gameState.dealerPosition,
+            winnerDongs: this.gameState.dongScores[winnerPlay.playerIndex],
+            shouldWinKam: this.gameState.dongScores[winnerPlay.playerIndex] >= 6
+          }
         });
-      }, 3000);
+      }, 2000);
     } else {
       // 栋结束但游戏未结束，赢家成为新的首家出牌
       this.gameState.currentDong = [];
@@ -1958,6 +2208,15 @@ wss.on('connection', (ws) => {
           break;
         case 'pass':
           handlePass(data);
+          break;
+        case 'manualPay':
+          handleManualPay(data);
+          break;
+        case 'payToKam':
+          handlePayToKam(data);
+          break;
+        case 'finishSettlement':
+          handleFinishSettlement(data);
           break;
       }
     } catch (error) {
@@ -2152,14 +2411,34 @@ wss.on('connection', (ws) => {
       cards
     });
 
+    // 检测特殊牌型
+    const specialCombo = room.checkSpecialCombination(cards);
+    
     room.broadcast({
       type: 'cardsPlayed',
       playerId: currentPlayerId,
       playerIndex,
       cards,
       currentDong: room.gameState.currentDong,
-      handCounts: room.gameState.hands.map(h => h.length)
+      handCounts: room.gameState.hands.map(h => h.length),
+      specialCombo: specialCombo // 传递特殊牌型信息
     });
+
+    // 如果是需要结算的特殊牌型，触发结算界面
+    if (specialCombo && specialCombo.needsSettlement) {
+      // 延迟一下让玩家看到牌
+      setTimeout(() => {
+        room.broadcast({
+          type: 'specialComboSettlement',
+          playerIndex,
+          playerName: room.players[playerIndex].playerName,
+          specialCombo: specialCombo,
+          scores: room.gameState.scores,
+          publicPool: room.gameState.publicPool
+        });
+      }, 1000);
+      return; // 暂停游戏，等待手动结算
+    }
 
     // 使用新的checkDongEnd方法
     room.checkDongEnd();
@@ -2236,6 +2515,123 @@ wss.on('connection', (ws) => {
 
     // 使用新的checkDongEnd方法
     room.checkDongEnd();
+  }
+
+  function handleManualPay(data) {
+    const room = rooms.get(currentRoom);
+    if (!room) return;
+
+    const { fromPlayer, toPlayer, amount } = data;
+    
+    // 验证玩家索引
+    if (fromPlayer < 0 || fromPlayer >= 4 || toPlayer < 0 || toPlayer >= 4) {
+      return;
+    }
+    
+    // 验证积分
+    if (room.gameState.scores[fromPlayer] < amount) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: '积分不足'
+      }));
+      return;
+    }
+    
+    // 转移积分
+    room.gameState.scores[fromPlayer] -= amount;
+    room.gameState.scores[toPlayer] += amount;
+    
+    // 广播积分变化
+    room.broadcast({
+      type: 'scoreTransfer',
+      fromPlayer,
+      toPlayer,
+      amount,
+      scores: room.gameState.scores
+    });
+  }
+
+  function handlePayToKam(data) {
+    const room = rooms.get(currentRoom);
+    if (!room) return;
+
+    const { fromPlayer, amount } = data;
+    
+    // 验证玩家索引
+    if (fromPlayer < 0 || fromPlayer >= 4) {
+      return;
+    }
+    
+    // 验证积分
+    if (room.gameState.scores[fromPlayer] < amount) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: '积分不足'
+      }));
+      return;
+    }
+    
+    // 转移积分到 Kam 公共池
+    room.gameState.scores[fromPlayer] -= amount;
+    room.gameState.publicPool += amount;
+    
+    // 标记赢家已支付
+    if (!room.gameState.settlementInfo) {
+      room.gameState.settlementInfo = {};
+    }
+    room.gameState.settlementInfo.winnerPaidToKam = true;
+    room.gameState.settlementInfo.winnerPayAmount = amount;
+    
+    // 广播积分和 Kam 变化
+    room.broadcast({
+      type: 'kamPayment',
+      fromPlayer,
+      amount,
+      scores: room.gameState.scores,
+      publicPool: room.gameState.publicPool
+    });
+  }
+
+  function handleFinishSettlement(data) {
+    const room = rooms.get(currentRoom);
+    if (!room) return;
+    
+    // 检查赢家是否支付了 Kam
+    const winnerPaidToKam = room.gameState.settlementInfo?.winnerPaidToKam || false;
+    
+    // 如果赢家没有支付 Kam，罚款 16 分
+    if (!winnerPaidToKam && room.gameState.lastWinner !== undefined) {
+      const winner = room.gameState.lastWinner;
+      if (room.gameState.scores[winner] >= 16) {
+        room.gameState.scores[winner] -= 16;
+        room.gameState.publicPool += 16;
+        
+        // 广播罚款消息
+        room.broadcast({
+          type: 'winnerPenalty',
+          playerIndex: winner,
+          amount: 16,
+          scores: room.gameState.scores,
+          publicPool: room.gameState.publicPool
+        });
+      }
+    }
+    
+    // 清除结算信息
+    room.gameState.settlementInfo = null;
+    
+    // 广播结算完成，准备下一局
+    room.broadcast({
+      type: 'settlementFinished',
+      scores: room.gameState.scores,
+      publicPool: room.gameState.publicPool,
+      dealerPosition: room.gameState.dealerPosition
+    });
+    
+    // 3秒后准备下一局
+    setTimeout(() => {
+      room.prepareNextGame();
+    }, 3000);
   }
 
 });

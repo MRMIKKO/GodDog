@@ -47,8 +47,7 @@ class TianJiuGame {
             toast: document.getElementById('toast'),
             displayRoomId: document.getElementById('displayRoomId'),
             seatRoomId: document.getElementById('seatRoomId'),
-            currentRound: document.getElementById('currentRound'),
-            turnText: document.getElementById('turnText'),
+            kamValue: document.getElementById('kamValue'),
             winnerName: document.getElementById('winnerName'),
             playAgainBtn: document.getElementById('playAgainBtn'),
             backToLobbyBtn: document.getElementById('backToLobbyBtn'),
@@ -102,6 +101,12 @@ class TianJiuGame {
         this.elements.roomIdInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.joinRoom();
         });
+        
+        // Kam 点击事件 - 赢家点击触发支付界面
+        const kamInfo = document.getElementById('kamInfo');
+        if (kamInfo) {
+            kamInfo.addEventListener('click', () => this.handleKamClick());
+        }
     }
 
     connectWebSocket() {
@@ -199,6 +204,27 @@ class TianJiuGame {
                 break;
             case 'gameOver':
                 this.handleGameOver(data);
+                break;
+            case 'gameEnd':
+                this.handleGameEnd(data);
+                break;
+            case 'specialComboSettlement':
+                this.handleSpecialComboSettlement(data);
+                break;
+            case 'scoreTransfer':
+                this.handleScoreTransfer(data);
+                break;
+            case 'kamPayment':
+                this.handleKamPayment(data);
+                break;
+            case 'winnerPenalty':
+                this.handleWinnerPenalty(data);
+                break;
+            case 'settlementFinished':
+                this.handleSettlementFinished(data);
+                break;
+            case 'newGame':
+                this.handleNewGame(data);
                 break;
             case 'playerOut':
                 this.handlePlayerOut(data);
@@ -357,6 +383,16 @@ class TianJiuGame {
             const dongCount = this.elements[`pos${i}DongCount`];
             if (cardsCount) cardsCount.textContent = '0张';
             if (dongCount) dongCount.textContent = '0栋';
+        }
+        
+        // 更新Kam显示（如果gameState中有publicPool数据）
+        if (data.gameState && typeof data.gameState.publicPool !== 'undefined') {
+            this.updatePublicPoolDisplay(data.gameState.publicPool);
+        }
+        
+        // 更新积分显示（如果gameState中有scores数据）
+        if (data.gameState && data.gameState.scores) {
+            this.updateScoresDisplay(data.gameState.scores);
         }
         
         // 不再自动发牌，等待骰子环节
@@ -575,12 +611,11 @@ class TianJiuGame {
         const relativePos = (playerIndex - this.position + 4) % 4;
         const positions = ['你', '下家', '对家', '上家'];
         
+        // 轮次指示已移除，改为使用高亮显示
+        // 如果需要可以通过toast提示
         if (this.isMyTurn()) {
-            this.elements.turnText.textContent = '轮到你';
-            this.elements.turnText.style.color = 'var(--gold-color)';
-        } else {
-            this.elements.turnText.textContent = `座位${playerIndex + 1} (${positions[relativePos]})`;
-            this.elements.turnText.style.color = '#ccc';
+            // 可选：显示轮到你的提示
+            // this.showToast('轮到你', 1000);
         }
         
         // 高亮当前玩家的区域
@@ -1272,16 +1307,18 @@ class TianJiuGame {
         const relativePos = (data.winner - this.position + 4) % 4;
         const positions = ['你', '下家', '对家', '上家'];
         
-        this.elements.currentRound.textContent = data.round;
+        // currentRound element has been removed from UI
+        // Round information is now shown in settlement panel
         
         // 更新栋数显示
         if (data.dongScores) {
             this.updateDongScores(data.dongScores);
         }
         
-        // 更新积分显示
+        // 更新积分显示（两个方法都调用以确保所有UI都更新）
         if (data.scores) {
             this.updateScores(data.scores);
+            this.updateScoresDisplay(data.scores);
         }
     }
 
@@ -1342,6 +1379,560 @@ class TianJiuGame {
             
             this.elements.winnerName.textContent = winText;
         }, 2000);
+    }
+
+    handleSpecialComboSettlement(data) {
+        // 特殊牌型结算（至尊、四天九等）
+        this.currentSettlement = {
+            winner: data.playerIndex,
+            winnerName: data.playerName,
+            specialCombo: data.specialCombo,
+            scores: data.scores,
+            publicPool: data.publicPool,
+            paidAmount: 0,
+            isSpecialCombo: true
+        };
+        
+        // 重置支付计数器
+        const paymentCounter = document.getElementById('paymentCounter');
+        if (paymentCounter) {
+            paymentCounter.textContent = '-0';
+        }
+        
+        // 显示结算蒙层
+        const settlementOverlay = document.getElementById('settlementOverlay');
+        if (settlementOverlay) {
+            settlementOverlay.classList.remove('hidden');
+        }
+        
+        // 初始化钱箱交互
+        this.initPiggyBankInteraction();
+        
+        // 提示特殊牌型
+        this.showToast(`${data.playerName}出了${data.specialCombo.name}！`, 3000);
+    }
+
+    handleGameEnd(data) {
+        // 一局游戏结束，显示交互式结算蒙层
+        this.currentSettlement = {
+            winner: data.winner,
+            winnerName: data.winnerName,
+            winnerDongs: data.winnerDongs,
+            gameCount: data.gameCount,
+            scores: data.scores,
+            publicPool: data.publicPool,
+            paidAmount: 0,
+            winnerPaidToKam: false // 标记赢家是否支付给了 Kam
+        };
+        
+        // 如果当前玩家是赢家，不自动显示结算界面
+        // 赢家需要手动点击 Kam 触发支付
+        if (this.position === data.winner) {
+            // this.showToast('你赢了！点击 Kam 支付给公共池', 5000);
+            // 高亮 Kam 提示点击
+            const kamInfo = document.getElementById('kamInfo');
+            if (kamInfo) {
+                kamInfo.classList.add('highlight-kam');
+            }
+            return;
+        }
+        
+        // 非赢家显示结算界面
+        // 重置支付计数器
+        const paymentCounter = document.getElementById('paymentCounter');
+        if (paymentCounter) {
+            paymentCounter.textContent = '-0';
+        }
+        
+        // 显示结算蒙层
+        const settlementOverlay = document.getElementById('settlementOverlay');
+        if (settlementOverlay) {
+            settlementOverlay.classList.remove('hidden');
+        }
+        
+        // 初始化钱箱交互
+        this.initPiggyBankInteraction();
+    }
+
+    handleKamClick() {
+        // 检查是否在结算阶段且当前玩家是赢家
+        if (!this.currentSettlement) {
+            return;
+        }
+        
+        if (this.position !== this.currentSettlement.winner) {
+            this.showToast('只有赢家才能支付给 Kam！', 2000);
+            return;
+        }
+        
+        if (this.currentSettlement.winnerPaidToKam) {
+            this.showToast('你已经支付过了！', 2000);
+            return;
+        }
+        
+        // 移除高亮
+        const kamInfo = document.getElementById('kamInfo');
+        if (kamInfo) {
+            kamInfo.classList.remove('highlight-kam');
+        }
+        
+        // 显示赢家支付界面
+        const paymentCounter = document.getElementById('paymentCounter');
+        if (paymentCounter) {
+            paymentCounter.textContent = '-0';
+        }
+        
+        const settlementOverlay = document.getElementById('settlementOverlay');
+        if (settlementOverlay) {
+            settlementOverlay.classList.remove('hidden');
+        }
+        
+        // 初始化赢家专用的钱箱交互（支付给 Kam）
+        this.initWinnerPiggyBankInteraction();
+    }
+
+    initWinnerPiggyBankInteraction() {
+        // 赢家专用的钱箱交互，支付给 Kam
+        const piggyBank = document.getElementById('piggyBank');
+        const paymentCounter = document.getElementById('paymentCounter');
+        const container = document.getElementById('piggyBankContainer');
+        
+        let startY = 0;
+        let isDragging = false;
+        let hasPaid = false;
+        
+        const handleStart = (e) => {
+            if (isDragging) return;
+            
+            isDragging = true;
+            hasPaid = false;
+            startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            piggyBank.style.cursor = 'grabbing';
+        };
+        
+        const handleMove = (e) => {
+            if (!isDragging || hasPaid) return;
+            e.preventDefault();
+            
+            const currentY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            const deltaY = startY - currentY;
+            
+            // 实时更新钱箱位置
+            if (deltaY > 0) {
+                piggyBank.style.transform = `translateY(${-Math.min(deltaY, 100)}px)`;
+            } else {
+                piggyBank.style.transform = `translateY(${Math.min(-deltaY, 50)}px)`;
+            }
+        };
+        
+        const handleEnd = (e) => {
+            if (!isDragging) return;
+            
+            const currentY = e.type.includes('mouse') ? e.clientY : (e.changedTouches ? e.changedTouches[0].clientY : startY);
+            const deltaY = startY - currentY;
+            
+            // 上滑：支付金币给 Kam
+            if (deltaY > 50 && !hasPaid) {
+                hasPaid = true;
+                const coinsToAdd = Math.floor(deltaY / 50);
+                
+                // 发送支付给 Kam
+                this.sendPaymentToKam(coinsToAdd);
+                
+                // 播放金币动画
+                for (let i = 0; i < coinsToAdd; i++) {
+                    setTimeout(() => {
+                        this.createCoinAnimation(container);
+                    }, i * 100);
+                }
+                
+                // 更新支付计数器
+                this.currentSettlement.paidAmount += coinsToAdd;
+                this.currentSettlement.winnerPaidToKam = true;
+                paymentCounter.textContent = `-${this.currentSettlement.paidAmount}`;
+                paymentCounter.classList.add('show');
+                setTimeout(() => {
+                    paymentCounter.classList.remove('show');
+                }, 500);
+                
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+                
+                // 延迟后自动关闭结算界面
+                setTimeout(() => {
+                    const settlementOverlay = document.getElementById('settlementOverlay');
+                    if (settlementOverlay) {
+                        settlementOverlay.classList.add('hidden');
+                    }
+                    this.showToast('已支付给 Kam，等待其他玩家...', 2000);
+                }, 1000);
+            }
+            // 下滑：结束结算
+            else if (deltaY < -50 && !hasPaid) {
+                hasPaid = true;
+                const settlementOverlay = document.getElementById('settlementOverlay');
+                if (settlementOverlay) {
+                    settlementOverlay.classList.add('hidden');
+                }
+                // 赢家不支付直接结束，标记未支付
+                this.currentSettlement.winnerPaidToKam = false;
+                this.showToast('你选择不支付 Kam，等待其他玩家...', 2000);
+            }
+            
+            isDragging = false;
+            piggyBank.style.transform = '';
+            piggyBank.style.cursor = 'grab';
+        };
+        
+        // 移除旧的事件监听器
+        piggyBank.replaceWith(piggyBank.cloneNode(true));
+        const newPiggyBank = document.getElementById('piggyBank');
+        
+        // 添加触摸事件
+        newPiggyBank.addEventListener('touchstart', handleStart, { passive: false });
+        newPiggyBank.addEventListener('touchmove', handleMove, { passive: false });
+        newPiggyBank.addEventListener('touchend', handleEnd, { passive: false });
+        newPiggyBank.addEventListener('touchcancel', handleEnd, { passive: false });
+        
+        // 添加鼠标事件
+        newPiggyBank.addEventListener('mousedown', handleStart);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+    }
+
+    initPiggyBankInteraction() {
+        const piggyBank = document.getElementById('piggyBank');
+        const paymentCounter = document.getElementById('paymentCounter');
+        const container = document.getElementById('piggyBankContainer');
+        
+        let startY = 0;
+        let isDragging = false;
+        let hasPaid = false; // 标记本次滑动是否已支付
+        
+        const handleStart = (e) => {
+            // 只有非赢家才能支付
+            if (this.position === this.currentSettlement.winner) {
+                this.showToast('你是赢家，不需要支付！', 2000);
+                return;
+            }
+            
+            // 防止重复触发
+            if (isDragging) return;
+            
+            isDragging = true;
+            hasPaid = false; // 每次新手势开始时重置支付标记
+            startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            piggyBank.style.cursor = 'grabbing';
+        };
+        
+        const handleMove = (e) => {
+            if (!isDragging || hasPaid) return; // 已支付后不再响应移动
+            e.preventDefault();
+            
+            const currentY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            const deltaY = startY - currentY;
+            
+            // 实时更新钱箱位置
+            if (deltaY > 0) {
+                piggyBank.style.transform = `translateY(${-Math.min(deltaY, 100)}px)`;
+            } else {
+                piggyBank.style.transform = `translateY(${Math.min(-deltaY, 50)}px)`;
+            }
+        };
+        
+        const handleEnd = (e) => {
+            if (!isDragging) return;
+            
+            const currentY = e.type.includes('mouse') ? e.clientY : (e.changedTouches ? e.changedTouches[0].clientY : startY);
+            const deltaY = startY - currentY;
+            
+            // 上滑：支付金币（严格保证只触发一次）
+            if (deltaY > 50 && !hasPaid) {
+                hasPaid = true; // 立即标记已支付，防止重复
+                const coinsToAdd = Math.floor(deltaY / 50); // 每50px滑动距离 = 1个金币
+                
+                // 一次性发送支付
+                this.sendPayment(coinsToAdd);
+                
+                // 播放金币动画
+                for (let i = 0; i < coinsToAdd; i++) {
+                    setTimeout(() => {
+                        this.createCoinAnimation(container);
+                    }, i * 100);
+                }
+                
+                // 更新支付计数器
+                this.currentSettlement.paidAmount += coinsToAdd;
+                paymentCounter.textContent = `-${this.currentSettlement.paidAmount}`;
+                paymentCounter.classList.add('show');
+                setTimeout(() => {
+                    paymentCounter.classList.remove('show');
+                }, 500);
+                
+                // 触觉反馈（如果支持）
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            }
+            // 下滑：结束结算
+            else if (deltaY < -50 && !hasPaid) {
+                hasPaid = true; // 防止重复触发结束
+                this.finishSettlement();
+            }
+            
+            // 重置状态
+            isDragging = false;
+            piggyBank.style.transform = '';
+            piggyBank.style.cursor = 'grab';
+        };
+        
+        // 移除旧的事件监听器
+        piggyBank.replaceWith(piggyBank.cloneNode(true));
+        const newPiggyBank = document.getElementById('piggyBank');
+        
+        // 添加触摸事件
+        newPiggyBank.addEventListener('touchstart', handleStart, { passive: false });
+        newPiggyBank.addEventListener('touchmove', handleMove, { passive: false });
+        newPiggyBank.addEventListener('touchend', handleEnd, { passive: false });
+        newPiggyBank.addEventListener('touchcancel', handleEnd, { passive: false }); // 处理触摸取消
+        
+        // 添加鼠标事件（桌面端）
+        newPiggyBank.addEventListener('mousedown', handleStart);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+    }
+    
+    createCoinAnimation(container) {
+        const coin = document.createElement('div');
+        coin.className = 'coin';
+        
+        // 随机位置
+        const startX = container.offsetWidth / 2 + (Math.random() - 0.5) * 100;
+        const startY = container.offsetHeight / 2;
+        
+        coin.style.position = 'absolute';
+        coin.style.left = `${startX}px`;
+        coin.style.top = `${startY}px`;
+        coin.style.animation = 'coinFly 1s ease-out forwards';
+        
+        container.appendChild(coin);
+        
+        // 动画结束后移除
+        setTimeout(() => {
+            coin.remove();
+            // 在赢家区域显示收钱动画
+            this.showReceiveAnimation();
+        }, 1000);
+    }
+    
+    showReceiveAnimation() {
+        const winnerZone = document.querySelector(`.zone-pos${this.currentSettlement.winner}`);
+        if (winnerZone) {
+            winnerZone.classList.add('receiving-coins');
+            setTimeout(() => {
+                winnerZone.classList.remove('receiving-coins');
+            }, 1000);
+        }
+    }
+    
+    sendPayment(amount) {
+        this.ws.send(JSON.stringify({
+            type: 'manualPay',
+            fromPlayer: this.position,
+            toPlayer: this.currentSettlement.winner,
+            amount: amount
+        }));
+    }
+    
+    sendPaymentToKam(amount) {
+        // 赢家支付给 Kam
+        this.ws.send(JSON.stringify({
+            type: 'payToKam',
+            fromPlayer: this.position,
+            amount: amount
+        }));
+    }
+    
+    finishSettlement() {
+        // 检查赢家是否支付了 Kam
+        const winnerPaid = this.currentSettlement?.winnerPaidToKam || false;
+        
+        this.ws.send(JSON.stringify({
+            type: 'finishSettlement',
+            winnerPaidToKam: winnerPaid
+        }));
+        
+        this.showToast('结算完成！', 2000);
+    }
+    
+    handleScoreTransfer(data) {
+        // 更新积分显示
+        this.updateScoresDisplay(data.scores);
+        
+        // 显示转账动画提示
+        const positions = ['你', '下家', '对家', '上家'];
+        const fromPos = (data.fromPlayer - this.position + 4) % 4;
+        const toPos = (data.toPlayer - this.position + 4) % 4;
+        
+        if (data.fromPlayer === this.position) {
+            // 当前玩家支付
+            const paymentCounter = document.getElementById('paymentCounter');
+            if (paymentCounter) {
+                const currentAmount = parseInt(paymentCounter.textContent.replace('-', '')) || 0;
+                paymentCounter.textContent = `-${currentAmount + data.amount}`;
+            }
+        }
+        
+        // 触觉反馈
+        if (navigator.vibrate && data.fromPlayer === this.position) {
+            navigator.vibrate(30);
+        }
+    }
+    
+    handleKamPayment(data) {
+        // 更新积分和 Kam 显示
+        this.updateScoresDisplay(data.scores);
+        this.updatePublicPoolDisplay(data.publicPool);
+        
+        // 显示支付提示
+        if (data.fromPlayer === this.position) {
+            this.showToast(`已支付 ${data.amount} 分给 Kam`, 2000);
+        } else {
+            const positions = ['你', '下家', '对家', '上家'];
+            const fromPos = (data.fromPlayer - this.position + 4) % 4;
+            this.showToast(`${positions[fromPos]}支付了 ${data.amount} 分给 Kam`, 2000);
+        }
+        
+        // 触觉反馈
+        if (navigator.vibrate && data.fromPlayer === this.position) {
+            navigator.vibrate(50);
+        }
+    }
+    
+    handleWinnerPenalty(data) {
+        // 更新积分和 Kam 显示
+        this.updateScoresDisplay(data.scores);
+        this.updatePublicPoolDisplay(data.publicPool);
+        
+        // 显示罚款提示
+        if (data.playerIndex === this.position) {
+            this.showToast(`⚠️ 你没有支付 Kam，被罚款 ${data.amount} 分！`, 4000);
+        } else {
+            const positions = ['你', '下家', '对家', '上家'];
+            const pos = (data.playerIndex - this.position + 4) % 4;
+            this.showToast(`${positions[pos]}没有支付 Kam，被罚款 ${data.amount} 分`, 3000);
+        }
+        
+        // 触觉反馈
+        if (navigator.vibrate && data.playerIndex === this.position) {
+            navigator.vibrate([100, 50, 100]);
+        }
+    }
+    
+    handleSettlementFinished(data) {
+        // 更新积分显示
+        this.updateScoresDisplay(data.scores);
+        this.updatePublicPoolDisplay(data.publicPool);
+        
+        // 隐藏结算蒙层
+        const settlementOverlay = document.getElementById('settlementOverlay');
+        if (settlementOverlay) {
+            settlementOverlay.classList.add('hidden');
+        }
+        
+        // 清除 Kam 高亮
+        const kamInfo = document.getElementById('kamInfo');
+        if (kamInfo) {
+            kamInfo.classList.remove('highlight-kam');
+        }
+        
+        this.showToast('准备下一局...', 2000);
+    }
+
+    handleNewGame(data) {
+        // 新一局开始
+        this.gameCount = data.gameCount;
+        this.dealerPosition = data.dealerPosition;
+        
+        // 隐藏结算面板
+        this.hideSettlementPanel();
+        
+        // 更新庄家标记
+        this.updateDealerBadges(data.dealerPosition);
+        
+        // 更新公共池显示
+        this.updatePublicPoolDisplay(data.publicPool);
+        
+        // 更新积分显示
+        this.updateScoresDisplay(data.scores);
+        
+        this.showToast(`第${data.gameCount}局开始！`, 2000);
+    }
+
+    showSettlementPanel(html) {
+        // 移除旧的结算面板
+        const oldPanel = document.querySelector('.settlement-overlay');
+        if (oldPanel) {
+            oldPanel.remove();
+        }
+        
+        // 创建新的结算面板
+        const overlay = document.createElement('div');
+        overlay.className = 'settlement-overlay';
+        overlay.innerHTML = html;
+        document.body.appendChild(overlay);
+        
+        // 添加显示动画
+        setTimeout(() => {
+            overlay.classList.add('show');
+        }, 10);
+    }
+
+    hideSettlementPanel() {
+        const panel = document.querySelector('.settlement-overlay');
+        if (panel) {
+            panel.classList.remove('show');
+            setTimeout(() => {
+                panel.remove();
+            }, 300);
+        }
+    }
+
+    getDealerName(dealerIndex) {
+        const relativePos = (dealerIndex - this.position + 4) % 4;
+        const positions = ['你', '下家', '对家', '上家'];
+        return positions[relativePos];
+    }
+
+    updatePublicPoolDisplay(amount) {
+        // 更新Kam值显示
+        if (this.elements.kamValue) {
+            this.elements.kamValue.textContent = amount;
+            
+            // 当Kam值较高时(≥24)，添加高亮动画
+            if (amount >= 24) {
+                this.elements.kamValue.classList.add('high-value');
+            } else {
+                this.elements.kamValue.classList.remove('high-value');
+            }
+        }
+        
+        // 更新旧的公共池显示（如果存在）
+        const poolEl = document.getElementById('publicPool');
+        if (poolEl) {
+            poolEl.textContent = `公共池: ${amount}`;
+        }
+    }
+
+    updateScoresDisplay(scores) {
+        // 更新所有玩家的积分显示
+        for (let i = 0; i < 4; i++) {
+            const scoreEl = document.getElementById(`pos${i}Score`);
+            if (scoreEl) {
+                scoreEl.textContent = `${scores[i]}分`;
+            }
+        }
     }
 
     handlePlayerOut(data) {
