@@ -39,9 +39,6 @@ class TianJiuGame {
             roomIdInput: document.getElementById('roomId'),
             joinBtn: document.getElementById('joinBtn'),
             readyBtn: document.getElementById('readyBtn'),
-            playBtn: document.getElementById('playBtn'),
-            passBtn: document.getElementById('passBtn'),
-            sortBtn: document.getElementById('sortBtn'),
             playerCards: document.getElementById('playerCards'),
             playedCards: document.getElementById('playedCards'),
             toast: document.getElementById('toast'),
@@ -79,9 +76,6 @@ class TianJiuGame {
     setupEventListeners() {
         this.elements.joinBtn.addEventListener('click', () => this.joinRoom());
         this.elements.readyBtn.addEventListener('click', () => this.sendReady());
-        this.elements.playBtn.addEventListener('click', () => this.playSelectedCards());
-        this.elements.passBtn.addEventListener('click', () => this.pass());
-        this.elements.sortBtn.addEventListener('click', () => this.sortHand());
         this.elements.playAgainBtn.addEventListener('click', () => this.playAgain());
         this.elements.backToLobbyBtn.addEventListener('click', () => this.backToLobby());
         this.elements.rollDiceBtn.addEventListener('click', () => this.rollDice());
@@ -107,6 +101,9 @@ class TianJiuGame {
         if (kamInfo) {
             kamInfo.addEventListener('click', () => this.handleKamClick());
         }
+        
+        // 初始化手势识别
+        this.setupCardGestures();
     }
 
     connectWebSocket() {
@@ -581,14 +578,172 @@ class TianJiuGame {
             this.selectedCards.push(card);
             cardEl.classList.add('selected');
         }
-
-        // 更新按钮状态
-        this.updatePlayButton();
     }
 
-    updatePlayButton() {
-        const canPlay = this.selectedCards.length > 0 && this.isMyTurn();
-        this.elements.playBtn.disabled = !canPlay;
+    setupCardGestures() {
+        // 手势相关状态
+        this.gestureState = {
+            startY: 0,
+            startTime: 0,
+            isGesturing: false,
+            touchId: null
+        };
+        
+        const cardsContainer = this.elements.playerCards;
+        
+        // 触摸开始
+        cardsContainer.addEventListener('touchstart', (e) => {
+            // 只处理选中牌的手势
+            if (this.selectedCards.length === 0) return;
+            if (!this.isMyTurn()) return;
+            if (this.outPlayers[this.position]) return; // 被OUT了不能操作
+            if (this.awaitingPlayConfirmation) return; // 等待服务器确认时不能操作
+            
+            const touch = e.touches[0];
+            this.gestureState.startY = touch.clientY;
+            this.gestureState.startTime = Date.now();
+            this.gestureState.isGesturing = true;
+            this.gestureState.touchId = touch.identifier;
+        }, { passive: true });
+        
+        // 触摸移动
+        cardsContainer.addEventListener('touchmove', (e) => {
+            if (!this.gestureState.isGesturing) return;
+            if (this.selectedCards.length === 0) return;
+            
+            const touch = Array.from(e.touches).find(t => t.identifier === this.gestureState.touchId);
+            if (!touch) return;
+            
+            const deltaY = touch.clientY - this.gestureState.startY;
+            
+            // 视觉反馈：根据滑动方向添加提示动画
+            this.selectedCards.forEach(card => {
+                const cardEl = this.elements.playerCards.querySelector(`[data-card-id="${card.id}"]`);
+                if (cardEl) {
+                    if (deltaY < -30) {
+                        // 向上滑动 - 出牌提示
+                        cardEl.classList.add('gesture-hint-up');
+                        cardEl.classList.remove('gesture-hint-down');
+                    } else if (deltaY > 30) {
+                        // 向下滑动 - 过牌提示
+                        cardEl.classList.add('gesture-hint-down');
+                        cardEl.classList.remove('gesture-hint-up');
+                    } else {
+                        cardEl.classList.remove('gesture-hint-up', 'gesture-hint-down');
+                    }
+                }
+            });
+        }, { passive: true });
+        
+        // 触摸结束
+        cardsContainer.addEventListener('touchend', (e) => {
+            if (!this.gestureState.isGesturing) return;
+            
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === this.gestureState.touchId);
+            if (!touch) return;
+            
+            const deltaY = touch.clientY - this.gestureState.startY;
+            const duration = Date.now() - this.gestureState.startTime;
+            
+            // 清除提示动画
+            this.selectedCards.forEach(card => {
+                const cardEl = this.elements.playerCards.querySelector(`[data-card-id="${card.id}"]`);
+                if (cardEl) {
+                    cardEl.classList.remove('gesture-hint-up', 'gesture-hint-down');
+                }
+            });
+            
+            // 判断手势
+            if (duration < 1000) { // 1秒内完成
+                if (deltaY < -50) {
+                    // 向上滑动 > 50px -> 出牌
+                    this.playSelectedCardsWithAnimation();
+                } else if (deltaY > 50) {
+                    // 向下滑动 > 50px -> 过牌
+                    this.passWithAnimation();
+                }
+            }
+            
+            // 重置手势状态
+            this.gestureState.isGesturing = false;
+            this.gestureState.touchId = null;
+        }, { passive: true });
+    }
+
+    playSelectedCardsWithAnimation() {
+        if (!this.isMyTurn() || this.selectedCards.length === 0) return;
+        
+        // 先验证出牌是否合法
+        const validation = this.validatePlay(this.selectedCards);
+        if (!validation.valid) {
+            // 显示错误提示
+            this.showError(validation.error || '出牌无效');
+            // 清除选中状态
+            this.selectedCards.forEach(card => {
+                const cardEl = this.elements.playerCards.querySelector(`[data-card-id="${card.id}"]`);
+                if (cardEl) {
+                    cardEl.classList.remove('selected');
+                }
+            });
+            this.selectedCards = [];
+            return;
+        }
+        
+        // 播放卡牌飞行动画
+        const selectedCardsCopy = [...this.selectedCards];
+        selectedCardsCopy.forEach((card, index) => {
+            const cardEl = this.elements.playerCards.querySelector(`[data-card-id="${card.id}"]`);
+            if (cardEl) {
+                // 添加飞行动画
+                cardEl.style.animation = `cardFlyToPlayArea 0.5s ease-out forwards`;
+                cardEl.style.animationDelay = `${index * 0.05}s`;
+            }
+        });
+        
+        // 等待动画完成后发送出牌消息
+        setTimeout(() => {
+            this.playSelectedCards();
+        }, 600);
+    }
+
+    passWithAnimation() {
+        if (!this.isMyTurn()) return;
+        
+        // 检查过牌是否合法
+        const firstPlay = this.currentDong.find(play => !play.passed);
+        if (!firstPlay || firstPlay.cards.length === 0) {
+            this.showError('首家不能过牌');
+            return;
+        }
+        
+        const requiredCount = firstPlay.cards.length;
+        
+        // 如果没有选中牌，提示需要选牌
+        if (this.selectedCards.length === 0) {
+            this.showError(`请选择${requiredCount}张牌进行过牌`);
+            return;
+        }
+        
+        // 验证选中的牌数量
+        if (this.selectedCards.length !== requiredCount) {
+            this.showError(`过牌需要选择${requiredCount}张牌`);
+            return;
+        }
+        
+        // 播放向下飞出动画
+        const selectedCardsCopy = [...this.selectedCards];
+        selectedCardsCopy.forEach((card, index) => {
+            const cardEl = this.elements.playerCards.querySelector(`[data-card-id="${card.id}"]`);
+            if (cardEl) {
+                cardEl.style.animation = `cardFlyDown 0.4s ease-in forwards`;
+                cardEl.style.animationDelay = `${index * 0.05}s`;
+            }
+        });
+        
+        // 等待动画完成后发送过牌消息
+        setTimeout(() => {
+            this.pass();
+        }, 500);
     }
 
     isMyTurn() {
@@ -626,26 +781,8 @@ class TianJiuGame {
     }
 
     updateControlButtons() {
-        const isMyTurn = this.isMyTurn();
-        // 检查当前玩家是否被OUT
-        const isOut = this.outPlayers[this.position];
-        
-        // 在等待服务器确认时禁用操作按钮
-        if (this.awaitingPlayConfirmation) {
-            this.elements.playBtn.disabled = true;
-            this.elements.passBtn.disabled = true;
-            return;
-        }
-
-        // 如果被OUT，禁用所有操作
-        if (isOut) {
-            this.elements.playBtn.disabled = true;
-            this.elements.passBtn.disabled = true;
-            return;
-        }
-
-        this.elements.playBtn.disabled = !isMyTurn || this.selectedCards.length === 0;
-        this.elements.passBtn.disabled = !isMyTurn;
+        // 此函数保留用于兼容性，但不再操作按钮
+        // 手势识别会直接检查回合和OUT状态
     }
 
     // 客户端验证出牌组合（与服务器逻辑一致）
@@ -1216,7 +1353,8 @@ class TianJiuGame {
     handleCardsPlayed(data) {
         // 更新当前栋状态
         this.currentDong = data.currentDong;
-        this.renderPlayedCards(data.currentDong);
+        // 传递最新出牌的玩家索引，用于动画
+        this.renderPlayedCards(data.currentDong, data.playerIndex);
 
         // 如果是自己出的牌，才从本地手牌中移除并清空选中
         if (data.playerIndex === this.position) {
@@ -1255,8 +1393,8 @@ class TianJiuGame {
             passed: true
         });
         
-        // 重新渲染所有出牌区域
-        this.renderPlayedCards(this.currentDong);
+        // 重新渲染所有出牌区域，传递过牌玩家索引用于动画
+        this.renderPlayedCards(this.currentDong, data.playerIndex);
         
         // 使用服务器发送的准确手牌数量更新所有玩家
         if (data.handCounts) {
@@ -1269,7 +1407,7 @@ class TianJiuGame {
         }
     }
 
-    renderPlayedCards(currentDong) {
+    renderPlayedCards(currentDong, latestPlayerIndex = null) {
         // 清空所有4个座位的出牌区域
         for (let pos = 0; pos < 4; pos++) {
             const area = document.getElementById(`pos${pos}PlayedCards`);
@@ -1281,21 +1419,38 @@ class TianJiuGame {
             const area = document.getElementById(`pos${play.playerIndex}PlayedCards`);
             
             if (area && play.cards && play.cards.length > 0) {
+                // 只有最新出牌的玩家才播放动画
+                const shouldAnimate = (latestPlayerIndex !== null && play.playerIndex === latestPlayerIndex);
+                
                 if (play.passed) {
-                    // 过牌：显示丢弃的牌，使用throw.svg背景
-                    play.cards.forEach(card => {
+                    // 过牌：显示丢弃的牌，使用throw.svg背景，使用和出牌一样的从底部滑入动画
+                    play.cards.forEach((card, index) => {
                         const cardEl = document.createElement('div');
                         cardEl.className = 'card discarded-card';
                         cardEl.style.backgroundImage = 'url(imgs/throw.svg)';
                         cardEl.style.backgroundSize = 'contain';
                         cardEl.style.backgroundRepeat = 'no-repeat';
                         cardEl.style.backgroundPosition = 'center';
+                        
+                        // 只给最新过牌的玩家添加动画 - 和出牌动画一样
+                        if (shouldAnimate) {
+                            cardEl.style.animation = `cardAppearFromBottom 0.5s ease-out forwards`;
+                            cardEl.style.animationDelay = `${index * 0.05}s`;
+                        }
+                        
                         area.appendChild(cardEl);
                     });
                 } else {
                     // 正常出牌：显示实际的牌
-                    play.cards.forEach(card => {
+                    play.cards.forEach((card, index) => {
                         const cardEl = this.createCardElement(card, true);
+                        
+                        // 只给最新出牌的玩家添加动画
+                        if (shouldAnimate) {
+                            cardEl.style.animation = `cardAppearFromBottom 0.5s ease-out forwards`;
+                            cardEl.style.animationDelay = `${index * 0.05}s`;
+                        }
+                        
                         area.appendChild(cardEl);
                     });
                 }
@@ -1393,12 +1548,6 @@ class TianJiuGame {
             isSpecialCombo: true
         };
         
-        // 重置支付计数器
-        const paymentCounter = document.getElementById('paymentCounter');
-        if (paymentCounter) {
-            paymentCounter.textContent = '-0';
-        }
-        
         // 显示结算蒙层
         const settlementOverlay = document.getElementById('settlementOverlay');
         if (settlementOverlay) {
@@ -1439,12 +1588,6 @@ class TianJiuGame {
         }
         
         // 非赢家显示结算界面
-        // 重置支付计数器
-        const paymentCounter = document.getElementById('paymentCounter');
-        if (paymentCounter) {
-            paymentCounter.textContent = '-0';
-        }
-        
         // 显示结算蒙层
         const settlementOverlay = document.getElementById('settlementOverlay');
         if (settlementOverlay) {
@@ -1479,11 +1622,6 @@ class TianJiuGame {
         }
         
         // 显示赢家支付界面
-        const paymentCounter = document.getElementById('paymentCounter');
-        if (paymentCounter) {
-            paymentCounter.textContent = '-0';
-        }
-        
         const settlementOverlay = document.getElementById('settlementOverlay');
         if (settlementOverlay) {
             settlementOverlay.style.display = 'flex';
@@ -1497,7 +1635,6 @@ class TianJiuGame {
     initWinnerPiggyBankInteraction() {
         // 赢家专用的钱箱交互，支付给 Kam
         const piggyBank = document.getElementById('piggyBank');
-        const paymentCounter = document.getElementById('paymentCounter');
         const container = document.getElementById('piggyBankContainer');
         
         if (!piggyBank || !container) return;
@@ -1596,14 +1733,9 @@ class TianJiuGame {
                 // 播放 1 个金币动画
                 this.createCoinAnimation(container);
                 
-                // 更新支付计数器
+                // 更新支付状态
                 this.currentSettlement.paidAmount += 1;
                 this.currentSettlement.winnerPaidToKam = true;
-                paymentCounter.textContent = `-${this.currentSettlement.paidAmount}`;
-                paymentCounter.classList.add('show');
-                setTimeout(() => {
-                    paymentCounter.classList.remove('show');
-                }, 500);
                 
                 if (navigator.vibrate) {
                     navigator.vibrate(50);
@@ -1667,7 +1799,6 @@ class TianJiuGame {
 
     initPiggyBankInteraction() {
         const piggyBank = document.getElementById('piggyBank');
-        const paymentCounter = document.getElementById('paymentCounter');
         const container = document.getElementById('piggyBankContainer');
         
         if (!piggyBank || !container) return;
@@ -1954,15 +2085,6 @@ class TianJiuGame {
         const positions = ['你', '下家', '对家', '上家'];
         const fromPos = (data.fromPlayer - this.position + 4) % 4;
         const toPos = (data.toPlayer - this.position + 4) % 4;
-        
-        if (data.fromPlayer === this.position) {
-            // 当前玩家支付
-            const paymentCounter = document.getElementById('paymentCounter');
-            if (paymentCounter) {
-                const currentAmount = parseInt(paymentCounter.textContent.replace('-', '')) || 0;
-                paymentCounter.textContent = `-${currentAmount + data.amount}`;
-            }
-        }
         
         // 触觉反馈
         if (navigator.vibrate && data.fromPlayer === this.position) {

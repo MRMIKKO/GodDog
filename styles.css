@@ -122,7 +122,7 @@ body {
 }
 
 /* ==================== 按钮样式 ==================== */
-.btn-primary, .btn-secondary, .btn-control {
+.btn-primary, .btn-secondary {
     padding: 1.6rem 2.4rem;
     font-size: 1.1rem;
     border: none;
@@ -609,19 +609,23 @@ button:disabled {
 .play-cards-area {
     flex: 1;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap; /* 不换行 */
     align-content: flex-start;
-    gap: 0.25rem;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 0.3rem;
+    align-items: center;
+    justify-content: center;
+    overflow-y: hidden;
+    overflow-x: auto; /* 如果超过4张，可以横向滚动 */
     min-height: 0; /* 确保可以正确滚动 */
     scrollbar-width: thin; /* Firefox */
 }
 
+.play-cards-area .card {
+    width: 25%!important;
+}
+
 /* 隐藏滚动条但保持功能 */
 .play-cards-area::-webkit-scrollbar {
-    width: 0.2rem;
+    height: 0.2rem;
 }
 
 .play-cards-area::-webkit-scrollbar-track {
@@ -738,42 +742,6 @@ button:disabled {
     flex-direction: column;
 }
 
-.controls-bar {
-    display: flex;
-    justify-content: space-around;
-    padding: 0.7rem 1.2rem 0.5rem 1.2rem;
-    gap: 0.8rem;
-}
-
-.btn-control {
-    flex: 1;
-    padding: 1rem 0.6rem;
-    font-size: 0.95rem;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-light);
-    border: 0.2rem solid rgba(255, 255, 255, 0.2);
-}
-
-.btn-play {
-    background: linear-gradient(135deg, #4caf50, #2e7d32);
-    border-color: #4caf50;
-}
-
-.btn-play:active:not(:disabled) {
-    transform: scale(0.98);
-    box-shadow: 0 0.2rem 0.8rem rgba(76, 175, 80, 0.4);
-}
-
-.btn-pass {
-    background: linear-gradient(135deg, #ff9800, #f57c00);
-    border-color: #ff9800;
-}
-
-.btn-pass:active:not(:disabled) {
-    transform: scale(0.98);
-    box-shadow: 0 0.2rem 0.8rem rgba(255, 152, 0, 0.4);
-}
-
 .player-cards-container {
     position: relative; /* 为结算蒙层提供定位上下文 */
     padding: 0.5rem 0.7rem 0.8rem 0.7rem;
@@ -797,7 +765,6 @@ button:disabled {
     height: 8.6rem;
     border-radius: 0.7rem;
     background: transparent;
-    box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.4);
     cursor: pointer;
     transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), 
                 box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
@@ -831,20 +798,22 @@ button:disabled {
 }
 
 .card.small {
-    width: 4rem;
-    height: 5.8rem;
+    width: 3.2rem;
+    height: 4.6rem;
     border-radius: 0.4rem;
     box-shadow: none; /* 去掉出牌区域预览牌的阴影 */
+    flex-shrink: 0; /* 防止卡牌被压缩 */
 }
 
 /* 丢弃的牌 */
 .card.discarded-card {
-    width: 4rem;
-    height: 5.8rem;
+    width: 3.2rem;
+    height: 4.6rem;
     border-radius: 0.4rem;
     opacity: 0.7;
     cursor: default;
     box-shadow: none;
+    flex-shrink: 0;
 }
 
 .card.discarded-card:hover {
@@ -950,8 +919,8 @@ button:disabled {
     }
     
     .card.small {
-        width: 3.6rem;
-        height: 5.2rem;
+        width: 2.8rem;
+        height: 4rem;
     }
     
     .player-cards {
@@ -1004,16 +973,6 @@ button:disabled {
         gap: 0.2rem;
         padding: 0.25rem;
     }
-    
-    .controls-bar {
-        padding: 0.6rem 0.9rem 0.4rem 0.9rem;
-        gap: 0.7rem;
-    }
-    
-    .btn-control {
-        padding: 0.9rem 0.5rem;
-        font-size: 0.85rem;
-    }
 }
 
 @media (min-width: 376px) and (max-width: 414px) {
@@ -1023,8 +982,8 @@ button:disabled {
     }
     
     .card.small {
-        width: 3.8rem;
-        height: 5.5rem;
+        width: 3rem;
+        height: 4.3rem;
     }
 }
 
@@ -1035,8 +994,8 @@ button:disabled {
     }
     
     .card.small {
-        width: 4.5rem;
-        height: 6.5rem;
+        width: 3.6rem;
+        height: 5.2rem;
     }
     
     .player-cards-container {
@@ -1058,8 +1017,8 @@ button:disabled {
     }
     
     .card.small {
-        width: 3.2rem;
-        height: 4.6rem;
+        width: 2.5rem;
+        height: 3.6rem;
     }
     
     .player-cards-container {
@@ -1117,16 +1076,6 @@ button:disabled {
     .play-cards-area {
         gap: 0.15rem;
         padding: 0.2rem;
-    }
-    
-    .controls-bar {
-        padding: 0.5rem 0.7rem 0.4rem 0.7rem;
-        gap: 0.5rem;
-    }
-    
-    .btn-control {
-        padding: 0.8rem 0.4rem;
-        font-size: 0.8rem;
     }
 }
 
@@ -1400,7 +1349,7 @@ button, .card, input {
 .settlement-header {
     position: absolute;
     left: 55%;
-    bottom: 3.5rem;
+    bottom: 6.5rem;
     font-size: 2rem;
     color: #ff4444;
     text-shadow: 
@@ -1490,6 +1439,7 @@ button, .card, input {
     cursor: grab;
     transition: transform 0.1s ease-out;
     user-select: none;
+    margin-top: -6rem;
 }
 
 .piggy-bank:active {
@@ -1501,27 +1451,6 @@ button, .card, input {
     height: 100%;
     filter: drop-shadow(0 0.5rem 2rem rgba(255, 105, 180, 0.5));
     pointer-events: none;
-}
-
-/* 支付计数器 */
-.payment-counter {
-    position: absolute;
-    top: -3rem;
-    left: 50%;
-    transform: translateX(-50%) scale(1);
-    font-size: 4rem;
-    font-weight: 900;
-    color: #f44336;
-    text-shadow: 0 0.3rem 0.6rem rgba(244, 67, 54, 0.8),
-                 0 0 2rem rgba(255, 255, 255, 0.5);
-    opacity: 0;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    pointer-events: none;
-}
-
-.payment-counter.show {
-    opacity: 1;
-    transform: translateX(-50%) scale(1.2);
 }
 
 /* 金币动画 */
@@ -1594,6 +1523,97 @@ button, .card, input {
     100% {
         opacity: 0;
         transform: translate(-50%, -20%);
+    }
+}
+
+/* ==================== 出牌和过牌手势动画 ==================== */
+
+/* 卡牌飞行动画 - 出牌时向上飞到预览区 */
+@keyframes cardFlyToPlayArea {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-20vh) scale(0.8);
+        opacity: 0.9;
+    }
+    100% {
+        transform: translateY(-50vh) scale(0.6);
+        opacity: 0;
+    }
+}
+
+/* 卡牌飞行动画 - 过牌时向下飞出屏幕 */
+@keyframes cardFlyDown {
+    0% {
+        transform: translateY(0) scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(30vh) scale(0.5) rotate(15deg);
+        opacity: 0;
+    }
+}
+
+/* 预览牌区出现动画 - 从底部滑入 */
+@keyframes cardAppearFromBottom {
+    0% {
+        transform: translateY(100%) scale(0.8);
+        opacity: 0;
+    }
+    70% {
+        transform: translateY(-5%) scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* 预览牌区出现动画 - 从顶部掉落（过牌） */
+@keyframes cardDropFromTop {
+    0% {
+        transform: translateY(-100%) scale(0.8) rotate(-5deg);
+        opacity: 0;
+    }
+    60% {
+        transform: translateY(5%) scale(1.05) rotate(2deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(0) scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+/* 手势提示动画 */
+.card.gesture-hint-up {
+    animation: gestureHintUp 0.6s ease-in-out infinite;
+}
+
+.card.gesture-hint-down {
+    animation: gestureHintDown 0.6s ease-in-out infinite;
+}
+
+@keyframes gestureHintUp {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-1rem);
+        box-shadow: 0 1rem 2rem rgba(76, 175, 80, 0.6);
+    }
+}
+
+@keyframes gestureHintDown {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(1rem);
+        box-shadow: 0 1rem 2rem rgba(255, 152, 0, 0.6);
     }
 }
 
