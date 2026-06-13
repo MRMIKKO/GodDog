@@ -16,7 +16,9 @@
     "build": "pnpm --filter @goddog/shared build && pnpm --filter @goddog/server build && pnpm --filter @goddog/client build",
     "test": "pnpm --filter @goddog/shared test",
     "lint": "eslint .",
-    "format": "prettier --write \"**/*.{ts,vue,js,json,md}\""
+    "format": "prettier --write \"**/*.{ts,vue,js,json,md}\"",
+    "kill": "pkill -f \"tsx watch\" ; pkill -f \"vite\"",
+    "robot": "pnpm bot:room -- "
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
