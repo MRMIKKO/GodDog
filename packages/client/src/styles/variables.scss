@@ -1,0 +1,29 @@
+// 全局样式变量 —— 天九至尊主题（中式牌桌）
+
+// 主色：墨绿牌桌 + 金色点缀
+:root {
+  --color-felt-deep: #0b3d2e;
+  --color-felt: #114d3a;
+  --color-felt-light: #1a6b51;
+  --color-gold: #d4af37;
+  --color-gold-light: #f0d98a;
+  --color-red: #b22222;
+  --color-ivory: #f5ecd8;
+  --color-ink: #1c1c1c;
+  --color-text: #f5ecd8;
+  --color-text-dim: rgba(245, 236, 216, 0.6);
+
+  --radius-card: 8px;
+  --radius-panel: 14px;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 8px 28px rgba(0, 0, 0, 0.4);
+
+  --tile-w: 54px;
+  --tile-h: 128px; // 牌面 SVG 比例 150:355 ≈ 1:2.37
+
+  --z-table: 1;
+  --z-cards: 10;
+  --z-overlay: 100;
+  --z-toast: 1000;
+}

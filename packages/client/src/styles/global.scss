@@ -1,0 +1,77 @@
+@use './variables.scss';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    sans-serif;
+  color: var(--color-text);
+  background: var(--color-felt-deep);
+  overflow: hidden;
+  user-select: none;
+  // 适配移动端安全区
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input {
+  font-family: inherit;
+  outline: none;
+}
+
+// 通用金色按钮
+.btn_gold {
+  background: linear-gradient(180deg, var(--color-gold-light), var(--color-gold));
+  color: var(--color-ink);
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-size: 16px;
+  box-shadow: var(--shadow-card);
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease;
+
+  &:active {
+    transform: scale(0.96);
+    filter: brightness(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn_ghost {
+  background: rgba(245, 236, 216, 0.1);
+  color: var(--color-text);
+  border: 1px solid rgba(245, 236, 216, 0.3);
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 15px;
+
+  &:active {
+    background: rgba(245, 236, 216, 0.18);
+  }
+}

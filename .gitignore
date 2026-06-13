@@ -42,3 +42,14 @@ env/
 *.tmp
 *.bak
 *.backup
+
+# Monorepo / Node
+.pnpm-store/
+*.tsbuildinfo
+
+# Prisma
+packages/server/prisma/*.db
+
+# Vite
+.vite/
+packages/client/dist/

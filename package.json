@@ -1,0 +1,29 @@
+{
+  "name": "goddog",
+  "version": "0.1.0",
+  "private": true,
+  "description": "天九至尊 - 线上天九棋牌娱乐游戏",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@11.6.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./packages/*\" dev",
+    "dev:server": "pnpm --filter @goddog/server dev",
+    "dev:client": "pnpm --filter @goddog/client dev",
+    "bot:room": "pnpm --filter @goddog/server bot:room",
+    "build": "pnpm --filter @goddog/shared build && pnpm --filter @goddog/server build && pnpm --filter @goddog/client build",
+    "test": "pnpm --filter @goddog/shared test",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,vue,js,json,md}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  }
+}

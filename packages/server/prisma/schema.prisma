@@ -1,0 +1,80 @@
+// Prisma schema —— 天九至尊持久层
+// 第一期使用 SQLite，便于本地调试与单机部署；后续可切换 provider 到 postgresql。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// 用户：支持游客模式与后续账号绑定
+model User {
+  id           String   @id @default(cuid())
+  /// 游客唯一标识（首次访问生成，存于客户端 localStorage）
+  guestId      String   @unique
+  /// 绑定的登录账号（绑定后才有），唯一
+  username     String?  @unique
+  /// 绑定账号后的密码哈希（bcrypt）
+  passwordHash String?
+  /// 昵称（UI 显示）
+  nickname     String
+  /// 头像标识（预留）
+  avatar       String?
+  /// 欢乐豆余额
+  beans        Int      @default(1000)
+  /// 是否管理员
+  isAdmin      Boolean  @default(false)
+  /// 是否已绑定正式账号
+  isBound      Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  records      GameRecord[]
+  beanLogs     BeanLog[]
+
+  @@index([guestId])
+}
+
+/// 对局记录：每局每位玩家一条
+model GameRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  roomCode    String
+  /// 局内序号
+  roundNo     Int
+  /// 本局赢得栋数
+  dongs       Int
+  /// 欢乐豆变动
+  scoreChange Int
+  /// 是否庄家
+  isBanker    Boolean
+  /// 是否结牌胜利
+  isWinner    Boolean
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([roomCode])
+}
+
+/// 欢乐豆流水：充值 / 对局结算 / 系统赠送
+model BeanLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  /// 变动量（正为入账，负为出账）
+  amount    Int
+  /// 变动后余额
+  balance   Int
+  /// 类型：recharge / game / signup / admin
+  type      String
+  /// 备注
+  memo      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

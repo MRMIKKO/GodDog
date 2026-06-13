@@ -1,0 +1,21 @@
+packages:
+  - "packages/*"
+
+# 关闭运行命令前的依赖校验，避免 esbuild 构建脚本告警阻断 pnpm run/exec
+verifyDepsBeforeRun: false
+
+onlyBuiltDependencies:
+  - esbuild
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+  - vue-demi
+  - "@parcel/watcher"
+
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  vue-demi: true
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
